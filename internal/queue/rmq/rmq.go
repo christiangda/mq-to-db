@@ -43,14 +43,14 @@ type rabbitMQConf struct {
 		routingKey string
 		durable    bool
 		autoDelete bool
-		args       map[string]string
+		args       map[string]interface{}
 	}
 	exchange struct {
 		name       string
 		kind       string
 		durable    bool
 		autoDelete bool
-		args       map[string]string
+		args       map[string]interface{}
 	}
 }
 
@@ -89,7 +89,7 @@ func New(c *config.Config) (queue.Consummer, error) {
 			routingKey string
 			durable    bool
 			autoDelete bool
-			args       map[string]string
+			args       map[string]interface{}
 		}{
 			c.RabbitMQ.Queue.Name,
 			c.RabbitMQ.Queue.RoutingKey,
@@ -102,7 +102,7 @@ func New(c *config.Config) (queue.Consummer, error) {
 			kind       string
 			durable    bool
 			autoDelete bool
-			args       map[string]string
+			args       map[string]interface{}
 		}{
 			c.RabbitMQ.Exchange.Name,
 			c.RabbitMQ.Exchange.Kind,
@@ -124,7 +124,7 @@ func (c *rabbitMQConf) Connect() {
 	if err != nil {
 		log.Fatal("Failed to open channel")
 	}
-	defer ch.Close()
+	//defer ch.Close()
 	c.channel = ch
 
 	err = c.channel.ExchangeDeclare(
@@ -134,7 +134,7 @@ func (c *rabbitMQConf) Connect() {
 		c.exchange.autoDelete,
 		false, // internal
 		false, // no-wait
-		nil,   // arguments
+		c.exchange.args,
 	)
 	if err != nil {
 		log.Fatal("Failed to declare an exchange \"%s\"", c.exchange.name)
@@ -146,7 +146,7 @@ func (c *rabbitMQConf) Connect() {
 		c.queue.autoDelete,
 		true,  // exclusive
 		false, // no-wait
-		nil,   // arguments
+		c.queue.args,
 	)
 	if err != nil {
 		log.Fatal("Failed to declare a queue \"%s\"", c.queue.name)
@@ -200,4 +200,8 @@ func (c *rabbitMQConf) Consume() <-chan queue.Messages {
 	close(out)
 
 	return out
+}
+
+func (c *rabbitMQConf) Close() {
+	c.Close()
 }

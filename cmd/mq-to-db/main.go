@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/spf13/pflag"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/christiangda/mq-to-db/internal/config"
+	"github.com/christiangda/mq-to-db/internal/queue/rmq"
 	"github.com/christiangda/mq-to-db/internal/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -51,7 +51,7 @@ func main() {
 	// cmd flags
 	pflag.StringVarP(&conf.Application.ConfigFile, "configFile", "c", "config", "Configuration file")
 	pflag.BoolVarP(&conf.Server.Debug, "debug", "d", false, "debug")
-	pflag.StringVarP(&conf.Server.LogFormat, "logFormat", "l", "json", "Log Format")
+	pflag.StringVarP(&conf.Server.LogFormat, "logFormat", "l", "text", "Log Format [text|json] ")
 
 	pflag.Parse()
 
@@ -99,5 +99,23 @@ func main() {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
 
-	fmt.Println(conf.ToYAML())
+	log.Debug(conf.ToYAML())
+
+	mq, err := rmq.New(&conf)
+	if err != nil {
+		log.Error("")
+	}
+	mq.Connect()
+	defer mq.Close()
+
+	done := make(chan bool, 1)
+
+	go func() {
+		for m := range mq.Consume() {
+			log.Debugf("Message Payload: %s", m.Payload)
+		}
+	}()
+
+	// main routine blocked until others routines finished
+	<-done
 }

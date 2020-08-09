@@ -6,6 +6,7 @@ package queue
 type Consummer interface {
 	Connect()
 	Consume() <-chan Messages
+	Close()
 }
 
 // Messages struct with message payload

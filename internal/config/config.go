@@ -8,7 +8,7 @@ import (
 )
 
 // This is a key value storage type used into some properties of the conf
-type args map[string]string
+type args map[string]interface{}
 
 // Config is the structure with all configuration
 type Config struct {

@@ -1,4 +1,4 @@
-package pgsql
+package pgsqlConf
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/storage"
 )
 
-type pgsql struct {
+type pgsqlConf struct {
 	pool *sql.DB
 }
 
@@ -37,19 +37,19 @@ func New(c *config.Config) (storage.Store, error) {
 	pool.SetMaxIdleConns(3)
 	pool.SetMaxOpenConns(3)
 
-	return &pgsql{
+	return &pgsqlConf{
 		pool: pool,
 	}, nil
 
 }
 
-func (c *pgsql) Ping(ctx context.Context) error {
+func (c *pgsqlConf) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
 	return c.pool.PingContext(ctx)
 }
 
-func (c *pgsql) Close() error {
+func (c *pgsqlConf) Close() error {
 	return c.pool.Close()
 }
