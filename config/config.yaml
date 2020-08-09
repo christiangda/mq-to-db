@@ -1,0 +1,42 @@
+---
+server:
+  address: 127.0.0.1
+  port: 8080
+
+rabbitmq:
+  server: 127.0.0.1
+  port: 5672
+  requestedHeartbeat: 25
+  connectionTimeout: 5000
+  networkRecoveryInterval: 5000
+  consumingQuote: 1000
+  automaticRecoveryEnabled: true
+  username: myuser
+  password: mypassword
+  virtualHost: myvirtualhost
+  isNoAck: false
+  exclusive: false
+
+  queue:
+    name: my.queue
+    routingKey: my.routeKey
+    durable: true
+    autoDelete: true
+    args:
+      x-message-ttl: 180000
+
+  exchange:
+    name: myexchage
+    type: topic
+    durable: true
+    autoDelete: false
+    args:
+      x-dead-letter-exchange: my.dead_letter
+
+postgresql:
+  server: 127.0.0.1
+  port: 5432
+  username: myusername
+  passsword: mypassword
+  database: mydatabase
+  sslMode: disable
