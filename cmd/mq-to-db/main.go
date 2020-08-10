@@ -142,12 +142,12 @@ func main() {
 	case "memory":
 		db, err = memory.New(&conf)
 		if err != nil {
-			log.Error("Error creating storage memory")
+			log.Fatalf("Error creating storage memory: %s", err)
 		}
 	case "postgresql":
 		db, err = pgsql.New(&conf)
 		if err != nil {
-			log.Error("Error creating storage postgresql")
+			log.Fatalf("Error creating storage postgresql: %s", err)
 		}
 	default:
 		log.Panic("Inside configuration file database.kind must be [postgresql|memory]")
@@ -158,12 +158,12 @@ func main() {
 	case "kafka":
 		qc, err = kafka.New(&conf)
 		if err != nil {
-			log.Error("Error creating consumer kafka")
+			log.Fatalf("Error creating consumer kafka: %s", err)
 		}
 	case "rabbitmq":
 		qc, err = rmq.New(&conf)
 		if err != nil {
-			log.Error("Error creating consumer rabbitmq")
+			log.Fatalf("Error creating consumer rabbitmq: %s", err)
 		}
 	default:
 		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")

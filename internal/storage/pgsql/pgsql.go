@@ -8,6 +8,7 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/storage"
+	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 )
 
 type pgsqlConf struct {
