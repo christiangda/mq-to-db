@@ -12,6 +12,10 @@ import (
 
 type pgsqlConf struct {
 	pool *sql.DB
+	conn *sql.Conn
+
+	maxPingTimeOut  time.Duration
+	maxQueryTimeOut time.Duration
 }
 
 // New return
@@ -31,23 +35,43 @@ func New(c *config.Config) (storage.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer pool.Close()
+	//defer pool.Close()
 
-	pool.SetConnMaxLifetime(0)
-	pool.SetMaxIdleConns(3)
-	pool.SetMaxOpenConns(3)
+	pool.SetConnMaxLifetime(c.Database.ConnMaxLifetime)
+	pool.SetMaxIdleConns(c.Database.MaxIdleConns)
+	pool.SetMaxOpenConns(c.Database.MaxOpenConns)
 
 	return &pgsqlConf{
-		pool: pool,
+		pool:            pool,
+		maxPingTimeOut:  c.Database.MaxPingTimeOut,
+		maxQueryTimeOut: c.Database.MaxQueryTimeOut,
 	}, nil
 
 }
 
+func (c *pgsqlConf) Connect(ctx context.Context) error {
+	conn, err := c.pool.Conn(ctx)
+	c.conn = conn
+	//defer conn.Close()
+	return err
+}
+
 func (c *pgsqlConf) Ping(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+
+	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
 	defer cancel()
 
 	return c.pool.PingContext(ctx)
+}
+
+func (c *pgsqlConf) ExecContext(ctx context.Context, q string) (sql.Result, error) {
+
+	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
+	defer cancel()
+
+	res, err := c.pool.ExecContext(ctx, q)
+
+	return res, err
 }
 
 func (c *pgsqlConf) Close() error {

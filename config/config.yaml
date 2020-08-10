@@ -40,3 +40,8 @@ database:
   passsword: mypassword
   database: mydatabase
   sslMode: disable
+  maxPingTimeOut: 1s
+  maxQueryTimeOut: 30s
+  connMaxLifetime: 0
+  maxIdleConns: 5
+  maxOpenConns: 20

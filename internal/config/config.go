@@ -63,6 +63,12 @@ type Config struct {
 		Password string `json:"password" yaml:"password"`
 		Database string `json:"database" yaml:"database"`
 		SSLMode  string `json:"sslMode" yaml:"sslMode"`
+
+		MaxPingTimeOut  time.Duration `json:"maxPingTimeOut" yaml:"maxPingTimeOut"`
+		MaxQueryTimeOut time.Duration `json:"maxQueryTimeOut" yaml:"maxQueryTimeOut"`
+		ConnMaxLifetime time.Duration `json:"connMaxLifetime" yaml:"connMaxLifetime"`
+		MaxIdleConns    int           `json:"maxIdleConns" yaml:"maxIdleConns"`
+		MaxOpenConns    int           `json:"maxOpenConns" yaml:"maxOpenConns"`
 	}
 
 	// This part is private, will be filled using code, not from file

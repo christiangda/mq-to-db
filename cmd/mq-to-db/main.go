@@ -105,6 +105,8 @@ func main() {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
 
+	// TODO: Define Default values to be used when config file doesn't has it
+
 	log.Debug(conf.ToYAML())
 
 	// Create abstraction layers (Using interfaces)
@@ -146,8 +148,10 @@ func main() {
 	qc.Connect()
 	defer qc.Close()
 
-	//db.Ping(appCtx)
-	db.Close()
+	if err = db.Ping(appCtx); err != nil {
+		log.Fatal("Error conecting to database")
+	}
+	defer db.Close()
 
 	done := make(chan bool, 1)
 

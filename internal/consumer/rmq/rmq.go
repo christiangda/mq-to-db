@@ -24,6 +24,7 @@ var (
 )
 
 type rabbitMQConf struct {
+	conn    *amqp.Connection
 	channel *amqp.Channel
 
 	address                  string
@@ -113,14 +114,16 @@ func New(c *config.Config) (consumer.Consumer, error) {
 	}, nil
 }
 
+// Connect to RabbitMQ server and channel
 func (c *rabbitMQConf) Connect() {
 	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port))
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ server \"%s:%d\" with user \"%s\" ", c.address, c.port, c.username)
 	}
 	//defer conn.Close()
+	c.conn = conn
 
-	ch, err := conn.Channel()
+	ch, err := c.conn.Channel()
 	if err != nil {
 		log.Fatal("Failed to open channel")
 	}
@@ -164,7 +167,9 @@ func (c *rabbitMQConf) Connect() {
 	}
 }
 
+// Consume messages from the channel
 func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
+
 	msgs, err := c.channel.Consume(
 		c.queue.name,
 		"",    // consumer
@@ -202,6 +207,8 @@ func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
 	return out
 }
 
+// Close the channel connection
 func (c *rabbitMQConf) Close() {
-	c.Close()
+	c.channel.Close()
+	c.conn.Close()
 }
