@@ -198,8 +198,14 @@ func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
 
 	for msg := range msgs {
 		out <- consumer.Messages{
-			Payload: msg.Body,
-			Length:  0,
+			ConsumerTag:     msg.ConsumerTag,
+			ContentEncoding: msg.ContentEncoding,
+			ContentType:     msg.ContentType,
+			MessageId:       msg.MessageId,
+			Timestamp:       msg.Timestamp,
+			Exchange:        msg.Exchange,
+			RoutingKey:      msg.RoutingKey,
+			Payload:         msg.Body,
 		}
 	}
 	close(out)

@@ -3,6 +3,8 @@ package messages
 import (
 	"encoding/json"
 
+	"github.com/christiangda/mq-to-db/internal/consumer"
+
 	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v3"
@@ -25,9 +27,18 @@ type SQL struct {
 	Response   string `json:"RESPONSE" yaml:"RESPONSE"`
 }
 
+func NewSQLMessage(m consumer.Messages) *SQL {
+	out := &SQL{}
+	err := json.Unmarshal(m.Payload, &out)
+	if err != nil {
+		log.Panic(err)
+	}
+	return out
+}
+
 // ToJSON export the configuration in JSON format
-func (c *SQL) ToJSON() string {
-	out, err := json.Marshal(c)
+func (m *SQL) ToJSON() string {
+	out, err := json.Marshal(m)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -35,8 +46,8 @@ func (c *SQL) ToJSON() string {
 }
 
 // ToYAML export the configuration in YAML format
-func (c *SQL) ToYAML() string {
-	out, err := yaml.Marshal(c)
+func (m *SQL) ToYAML() string {
+	out, err := yaml.Marshal(m)
 	if err != nil {
 		log.Panic(err)
 	}

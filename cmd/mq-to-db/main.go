@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"path/filepath"
+
+	"github.com/christiangda/mq-to-db/internal/messages"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
@@ -148,6 +151,9 @@ func main() {
 	qc.Connect()
 	defer qc.Close()
 
+	// Application context
+	appCtx := context.Background()
+
 	if err = db.Ping(appCtx); err != nil {
 		log.Fatal("Error conecting to database")
 	}
@@ -158,7 +164,28 @@ func main() {
 	// routine to consume messages
 	go func() {
 		for m := range qc.Consume() {
-			log.Debugf("Message Payload: %s", m.Payload)
+
+			mt, err := messages.GetType(m)
+			if err != nil {
+				log.Error(err)
+			}
+
+			switch mt {
+			case "SQL":
+				pl := messages.NewSQLMessage(m)
+				res, err := db.ExecContext(appCtx, pl.Content.Sentence)
+				if err != nil {
+					log.Errorf("Error storing SQL payload payload: %v", err)
+				}
+				log.Debugf("Result %s", res)
+
+			case "RAW":
+				log.Warnf("Unknow JSON payload %s", m.Payload)
+
+			default:
+				log.Warnf("Unknow payload %s", m.Payload)
+			}
+
 		}
 	}()
 
