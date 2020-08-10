@@ -1,4 +1,4 @@
-package pgsqlConf
+package pgsql
 
 import (
 	"context"
@@ -19,12 +19,12 @@ type pgsqlConf struct {
 func New(c *config.Config) (storage.Store, error) {
 
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.PostgreSQL.Server,
-		c.PostgreSQL.Port,
-		c.PostgreSQL.Username,
-		c.PostgreSQL.Password,
-		c.PostgreSQL.Database,
-		c.PostgreSQL.SSLMode,
+		c.Database.Address,
+		c.Database.Port,
+		c.Database.Username,
+		c.Database.Password,
+		c.Database.Database,
+		c.Database.SSLMode,
 	)
 
 	pool, err := sql.Open("postgres", dsn)

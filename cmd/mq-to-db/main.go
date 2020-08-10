@@ -3,9 +3,12 @@ package main
 import (
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/service/kafka"
-	"github.com/christiangda/mq-to-db/internal/queue"
+	"github.com/christiangda/mq-to-db/internal/consumer"
+	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
+	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/storage"
+	"github.com/christiangda/mq-to-db/internal/storage/memory"
+	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
 
 	"github.com/spf13/pflag"
 
@@ -13,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/christiangda/mq-to-db/internal/config"
-	"github.com/christiangda/mq-to-db/internal/queue/rmq"
 	"github.com/christiangda/mq-to-db/internal/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -107,13 +109,17 @@ func main() {
 
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
-	var qc queue.Consumer
+	var qc consumer.Consumer
 
-	switch &conf.Database.Kind {
+	switch conf.Database.Kind {
 	case "memory":
-		db, err = inmemory.New(&conf)
+		db, err = memory.New(&conf)
+		if err != nil {
+			log.Error("")
+		}
+
 	case "postgresql":
-		db, err = pgsql.New(a, u, p)
+		db, err = pgsql.New(&conf)
 		if err != nil {
 			panic(err)
 		}
@@ -121,9 +127,13 @@ func main() {
 		panic("must set either --inmemory or --mysql")
 	}
 
-	switch &conf.Consumer.Kind {
+	switch conf.Consumer.Kind {
 	case "kafka":
 		qc, err = kafka.New(&conf)
+		if err != nil {
+			log.Error("")
+		}
+
 	case "rabbitmq":
 		qc, err = rmq.New(&conf)
 		if err != nil {
@@ -135,6 +145,9 @@ func main() {
 
 	qc.Connect()
 	defer qc.Close()
+
+	//db.Ping(appCtx)
+	db.Close()
 
 	done := make(chan bool, 1)
 
