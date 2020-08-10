@@ -25,8 +25,9 @@ type Config struct {
 		Debug             bool          `json:"debug" yaml:"debug"`
 	}
 
-	RabbitMQ struct {
-		Server                   string `json:"server" yaml:"server"`
+	Consumer struct {
+		Kind                     string `json:"kind" yaml:"kind"`
+		Address                  string `json:"address" yaml:"address"`
 		Port                     int    `json:"port" yaml:"port"`
 		RequestedHeartbeat       int    `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
 		ConnectionTimeout        int    `json:"connectionTimeout" yaml:"connectionTimeout"`
@@ -47,15 +48,16 @@ type Config struct {
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {
 			Name       string `json:"name" yaml:"name"`
-			Kind       string `json:"kind" yaml:"kind"`
+			Kind       string `json:"type" yaml:"type"`
 			Durable    bool   `json:"durable" yaml:"durable"`
 			AutoDelete bool   `json:"autoDelete" yaml:"autoDelete"`
 			Args       args   `json:"args" yaml:"args"`
 		} `json:"exchange" yaml:"exchange"`
 	}
 
-	PostgreSQL struct {
-		Server   string `json:"server" yaml:"server"`
+	Database struct {
+		Kind     string `json:"kind" yaml:"kind"`
+		Address  string `json:"address" yaml:"address"`
 		Port     int    `json:"port" yaml:"port"`
 		Username string `json:"username" yaml:"username"`
 		Password string `json:"password" yaml:"password"`
@@ -63,6 +65,7 @@ type Config struct {
 		SSLMode  string `json:"sslMode" yaml:"sslMode"`
 	}
 
+	// This part is private, will be filled using code, not from file
 	Application struct {
 		Name          string `json:"name" yaml:"name"`
 		Description   string `json:"description" yaml:"description"`

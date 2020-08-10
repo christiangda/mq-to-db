@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/christiangda/mq-to-db/internal/config"
-	"github.com/christiangda/mq-to-db/internal/queue"
+	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"golang.org/x/xerrors"
@@ -26,7 +26,7 @@ var (
 type rabbitMQConf struct {
 	channel *amqp.Channel
 
-	server                   string
+	address                  string
 	port                     int
 	requestedHeartbeat       int
 	connectionTimeout        int
@@ -55,35 +55,35 @@ type rabbitMQConf struct {
 }
 
 // New create a new rabbitmq consumer
-func New(c *config.Config) (queue.Consummer, error) {
+func New(c *config.Config) (consumer.Consumer, error) {
 
 	// TODO: Improve error message and validations
 
-	if c.RabbitMQ.Server == "" {
+	if c.Consumer.Address == "" {
 		return nil, ErrRabbitMqServerAddressEmpty
 	}
 
-	if c.RabbitMQ.Port == 0 {
+	if c.Consumer.Port == 0 {
 		return nil, ErrRabbitMQServerPortEmpty
 	}
 
-	if c.RabbitMQ.Queue.Name == "" {
+	if c.Consumer.Queue.Name == "" {
 		return nil, ErrRabbitMQServerQueueEmpty
 	}
 
 	return &rabbitMQConf{
-		server:                   c.RabbitMQ.Server,
-		port:                     c.RabbitMQ.Port,
-		requestedHeartbeat:       c.RabbitMQ.RequestedHeartbeat,
-		connectionTimeout:        c.RabbitMQ.ConnectionTimeout,
-		networkRecoveryInterval:  c.RabbitMQ.NetworkRecoveryInterval,
-		consumingQuote:           c.RabbitMQ.ConsumingQuote,
-		automaticRecoveryEnabled: c.RabbitMQ.AutomaticRecoveryEnabled,
-		username:                 c.RabbitMQ.Username,
-		password:                 c.RabbitMQ.Password,
-		virtualHost:              c.RabbitMQ.VirtualHost,
-		isNoAck:                  c.RabbitMQ.IsNoAck,
-		exclusive:                c.RabbitMQ.Exclusive,
+		address:                  c.Consumer.Address,
+		port:                     c.Consumer.Port,
+		requestedHeartbeat:       c.Consumer.RequestedHeartbeat,
+		connectionTimeout:        c.Consumer.ConnectionTimeout,
+		networkRecoveryInterval:  c.Consumer.NetworkRecoveryInterval,
+		consumingQuote:           c.Consumer.ConsumingQuote,
+		automaticRecoveryEnabled: c.Consumer.AutomaticRecoveryEnabled,
+		username:                 c.Consumer.Username,
+		password:                 c.Consumer.Password,
+		virtualHost:              c.Consumer.VirtualHost,
+		isNoAck:                  c.Consumer.IsNoAck,
+		exclusive:                c.Consumer.Exclusive,
 		queue: struct {
 			name       string
 			routingKey string
@@ -91,11 +91,11 @@ func New(c *config.Config) (queue.Consummer, error) {
 			autoDelete bool
 			args       map[string]interface{}
 		}{
-			c.RabbitMQ.Queue.Name,
-			c.RabbitMQ.Queue.RoutingKey,
-			c.RabbitMQ.Queue.Durable,
-			c.RabbitMQ.Queue.AutoDelete,
-			c.RabbitMQ.Queue.Args,
+			c.Consumer.Queue.Name,
+			c.Consumer.Queue.RoutingKey,
+			c.Consumer.Queue.Durable,
+			c.Consumer.Queue.AutoDelete,
+			c.Consumer.Queue.Args,
 		},
 		exchange: struct {
 			name       string
@@ -104,21 +104,21 @@ func New(c *config.Config) (queue.Consummer, error) {
 			autoDelete bool
 			args       map[string]interface{}
 		}{
-			c.RabbitMQ.Exchange.Name,
-			c.RabbitMQ.Exchange.Kind,
-			c.RabbitMQ.Exchange.Durable,
-			c.RabbitMQ.Exchange.AutoDelete,
-			c.RabbitMQ.Exchange.Args,
+			c.Consumer.Exchange.Name,
+			c.Consumer.Exchange.Kind,
+			c.Consumer.Exchange.Durable,
+			c.Consumer.Exchange.AutoDelete,
+			c.Consumer.Exchange.Args,
 		},
 	}, nil
 }
 
 func (c *rabbitMQConf) Connect() {
-	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.server, c.port))
+	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port))
 	if err != nil {
-		log.Fatalf("Failed to connect to RabbitMQ server \"%s:%d\" with user \"%s\" ", c.server, c.port, c.username)
+		log.Fatalf("Failed to connect to RabbitMQ server \"%s:%d\" with user \"%s\" ", c.address, c.port, c.username)
 	}
-	defer conn.Close()
+	//defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
@@ -137,7 +137,7 @@ func (c *rabbitMQConf) Connect() {
 		c.exchange.args,
 	)
 	if err != nil {
-		log.Fatal("Failed to declare an exchange \"%s\"", c.exchange.name)
+		log.Fatalf("Failed to declare an exchange \"%s\"", c.exchange.name)
 	}
 
 	q, err := c.channel.QueueDeclare(
@@ -149,7 +149,7 @@ func (c *rabbitMQConf) Connect() {
 		c.queue.args,
 	)
 	if err != nil {
-		log.Fatal("Failed to declare a queue \"%s\"", c.queue.name)
+		log.Fatalf("Failed to declare a queue \"%s\"", c.queue.name)
 	}
 
 	err = c.channel.QueueBind(
@@ -160,11 +160,11 @@ func (c *rabbitMQConf) Connect() {
 		nil,
 	)
 	if err != nil {
-		log.Fatal("Failed to bind a queue \"%s\"", c.queue.name)
+		log.Fatalf("Failed to bind a queue \"%s\"", c.queue.name)
 	}
 }
 
-func (c *rabbitMQConf) Consume() <-chan queue.Messages {
+func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
 	msgs, err := c.channel.Consume(
 		c.queue.name,
 		"",    // consumer
@@ -175,10 +175,10 @@ func (c *rabbitMQConf) Consume() <-chan queue.Messages {
 		nil,   // args
 	)
 	if err != nil {
-		log.Fatal("Failed to register a consumer queue \"%s\"", c.queue.name)
+		log.Fatalf("Failed to register a consumer queue \"%s\"", c.queue.name)
 	}
 
-	out := make(chan queue.Messages)
+	out := make(chan consumer.Messages)
 
 	// the best way to consume a channel!
 	// go func() {
@@ -192,7 +192,7 @@ func (c *rabbitMQConf) Consume() <-chan queue.Messages {
 	// }()
 
 	for msg := range msgs {
-		out <- queue.Messages{
+		out <- consumer.Messages{
 			Payload: msg.Body,
 			Length:  0,
 		}

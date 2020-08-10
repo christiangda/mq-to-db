@@ -1,9 +1,9 @@
-package queue
+package consumer
 
 // This package is an abstraction layer for queue consumers
 
-// Consummer interface to be implemented for any kind of queue consumer
-type Consummer interface {
+// Consumer interface to be implemented for any kind of queue consumer
+type Consumer interface {
 	Connect()
 	Consume() <-chan Messages
 	Close()

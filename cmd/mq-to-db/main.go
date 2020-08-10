@@ -3,6 +3,10 @@ package main
 import (
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go/service/kafka"
+	"github.com/christiangda/mq-to-db/internal/queue"
+	"github.com/christiangda/mq-to-db/internal/storage"
+
 	"github.com/spf13/pflag"
 
 	"os"
@@ -21,7 +25,7 @@ const (
 	appGitRepository = "https://github.com/christiangda/mq-to-db"
 	appMetricsPath   = "/metrics"
 	appHealthPath    = "/health"
-	appEnvPrefix     = "RMQTOPGQL_"
+	appEnvPrefix     = "MQTODB_"
 )
 
 var (
@@ -101,17 +105,41 @@ func main() {
 
 	log.Debug(conf.ToYAML())
 
-	mq, err := rmq.New(&conf)
-	if err != nil {
-		log.Error("")
+	// Create abstraction layers (Using interfaces)
+	var db storage.Store
+	var qc queue.Consumer
+
+	switch &conf.Database.Kind {
+	case "memory":
+		db, err = inmemory.New(&conf)
+	case "postgresql":
+		db, err = pgsql.New(a, u, p)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		panic("must set either --inmemory or --mysql")
 	}
-	mq.Connect()
-	defer mq.Close()
+
+	switch &conf.Consumer.Kind {
+	case "kafka":
+		qc, err = kafka.New(&conf)
+	case "rabbitmq":
+		qc, err = rmq.New(&conf)
+		if err != nil {
+			log.Error("")
+		}
+	default:
+		panic("must set either --inmemory or --mysql")
+	}
+
+	qc.Connect()
+	defer qc.Close()
 
 	done := make(chan bool, 1)
 
 	go func() {
-		for m := range mq.Consume() {
+		for m := range qc.Consume() {
 			log.Debugf("Message Payload: %s", m.Payload)
 		}
 	}()

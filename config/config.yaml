@@ -3,8 +3,9 @@ server:
   address: 127.0.0.1
   port: 8080
 
-rabbitmq:
-  server: 127.0.0.1
+consumer:
+  kind: rabbitmq
+  address: 127.0.0.1
   port: 5672
   requestedHeartbeat: 25
   connectionTimeout: 5000
@@ -16,7 +17,6 @@ rabbitmq:
   virtualHost: myvirtualhost
   isNoAck: false
   exclusive: false
-
   queue:
     name: my.queue
     routingKey: my.routeKey
@@ -24,7 +24,6 @@ rabbitmq:
     autoDelete: true
     args:
       x-message-ttl: 180000
-
   exchange:
     name: myexchage
     type: topic
@@ -33,8 +32,9 @@ rabbitmq:
     args:
       x-dead-letter-exchange: my.dead_letter
 
-postgresql:
-  server: 127.0.0.1
+database:
+  kind: postgresql
+  address: 127.0.0.1
   port: 5432
   username: myusername
   passsword: mypassword
