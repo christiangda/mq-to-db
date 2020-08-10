@@ -15,7 +15,7 @@ type args map[string]interface{}
 type Config struct {
 	Server struct {
 		Address           string        `json:"address" yaml:"address"`
-		Port              uint16        `json:"port" yaml:"port"`
+		Port              int           `json:"port" yaml:"port"`
 		ReadTimeout       time.Duration `json:"readTimeout" yaml:"readTimeout"`
 		WriteTimeout      time.Duration `json:"writeTimeout" yaml:"writeTimeout"`
 		IdleTimeout       time.Duration `json:"idleTimeout" yaml:"idleTimeout"`

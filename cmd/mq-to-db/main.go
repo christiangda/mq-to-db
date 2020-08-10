@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"path/filepath"
+	"time"
+
+	flag "github.com/spf13/pflag"
 
 	"github.com/christiangda/mq-to-db/internal/messages"
 
@@ -12,8 +15,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
-
-	"github.com/spf13/pflag"
 
 	"os"
 	"strings"
@@ -34,9 +35,10 @@ const (
 )
 
 var (
-	conf config.Config
-	log  = logrus.New()
-	v    = viper.New()
+	conf       config.Config
+	log        *logrus.Entry
+	rootLogger = logrus.New()
+	v          = viper.New()
 )
 
 func init() {
@@ -57,31 +59,50 @@ func init() {
 }
 
 func main() {
-	// cmd flags
-	pflag.StringVarP(&conf.Application.ConfigFile, "configFile", "c", "config", "Configuration file")
-	pflag.BoolVarP(&conf.Server.Debug, "debug", "d", false, "debug")
-	pflag.StringVarP(&conf.Server.LogFormat, "logFormat", "l", "text", "Log Format [text|json] ")
+	// Server conf flags
+	flag.StringVar(&conf.Server.Address, "address", "127.0.0.1", "Server address")
+	flag.IntVar(&conf.Server.Port, "port", 8080, "Server port")
+	flag.DurationVar(&conf.Server.ReadTimeout, "readTimeout", 2*time.Second, "Server ReadTimeout")
+	flag.DurationVar(&conf.Server.WriteTimeout, "writeTimeout", 5*time.Second, "Server WriteTimeout")
+	flag.DurationVar(&conf.Server.IdleTimeout, "idleTimeout", 60*time.Second, "Server IdleTimeout")
+	flag.DurationVar(&conf.Server.ReadTimeout, "readHeaderTimeout", 5*time.Second, "Server ReadHeaderTimeout")
+	flag.DurationVar(&conf.Server.ShutdownTimeout, "shutdownTimeout", 30*time.Second, "Server ShutdownTimeout")
+	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "keepAlivesEnabled", true, "Server KeepAlivesEnabled")
+	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
+	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
 
-	pflag.Parse()
+	// Application conf var
+	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
+
+	flag.Parse()
+
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal("Unable to get the host name")
+	}
 
 	// Logs conf
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
-		log.SetFormatter(&logrus.JSONFormatter{})
+		rootLogger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		log.SetFormatter(&logrus.TextFormatter{})
+		rootLogger.SetFormatter(&logrus.TextFormatter{})
 	}
 
 	if conf.Server.Debug {
-		log.SetLevel(logrus.DebugLevel)
+		rootLogger.SetLevel(logrus.DebugLevel)
 	} else {
-		log.SetLevel(logrus.InfoLevel)
+		rootLogger.SetLevel(logrus.InfoLevel)
 	}
 
-	log.SetOutput(os.Stdout)
-
+	rootLogger.SetOutput(os.Stdout)
 	// Set the output of the message for the current logrus instance,
 	// Output of logrus instance can be set to any io.writer
-	log.Out = os.Stdout
+	rootLogger.Out = os.Stdout
+
+	log = rootLogger.WithFields(logrus.Fields{
+		"app":  appName,
+		"host": host,
+	})
 
 	// Read config file
 	v.SetConfigType("yaml")
@@ -103,7 +124,7 @@ func main() {
 		log.Fatalf("Error reading config file, %s", err)
 	}
 
-	err := v.Unmarshal(&conf)
+	err = v.Unmarshal(&conf)
 	if err != nil {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
