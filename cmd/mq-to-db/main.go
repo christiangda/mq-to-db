@@ -104,6 +104,8 @@ func main() {
 		"host": host,
 	})
 
+	log.Infof("Starting...")
+
 	// Read config file
 	v.SetConfigType("yaml")
 	v.SetConfigName(filepath.Base(conf.Application.ConfigFile))
@@ -120,18 +122,20 @@ func main() {
 
 	log.Debugf("Available Env Vars: %s", os.Environ())
 
+	log.Infof("Loading configuration file: %s", conf.Application.ConfigFile)
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
+		log.Fatalf("Error reading config file: %s", err)
 	}
 
+	log.Info("Configuring application")
 	err = v.Unmarshal(&conf)
 	if err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		log.Fatalf("Unable to decode: %v", err)
 	}
 
 	// TODO: Define default values to be used when config file doesn't has it
 
-	log.Debug(conf.ToYAML())
+	log.Debugf("Application configuration: %s", conf.ToJSON())
 
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
@@ -144,11 +148,13 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error creating storage memory: %s", err)
 		}
+		log.Info("Using  memory database")
 	case "postgresql":
 		db, err = pgsql.New(&conf)
 		if err != nil {
 			log.Fatalf("Error creating storage postgresql: %s", err)
 		}
+		log.Info("Using postgresql database")
 	default:
 		log.Panic("Inside configuration file database.kind must be [postgresql|memory]")
 	}
@@ -160,22 +166,26 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error creating consumer kafka: %s", err)
 		}
+		log.Info("Using kafka consumer")
 	case "rabbitmq":
 		qc, err = rmq.New(&conf)
 		if err != nil {
 			log.Fatalf("Error creating consumer rabbitmq: %s", err)
 		}
+		log.Info("Using rabbitmq consumer")
 	default:
 		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
 	}
 
+	log.Infof("Connecting to consumer")
 	qc.Connect()
 	defer qc.Close()
 
 	// Application context
 	appCtx := context.Background()
 
-	if err = db.Ping(appCtx); err != nil {
+	log.Infof("Connecting to database")
+	if err = db.Connect(appCtx); err != nil {
 		log.Fatal("Error conecting to database")
 	}
 	defer db.Close()
