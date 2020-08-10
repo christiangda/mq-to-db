@@ -111,36 +111,36 @@ func main() {
 	var db storage.Store
 	var qc consumer.Consumer
 
+	// Select the storage
 	switch conf.Database.Kind {
 	case "memory":
 		db, err = memory.New(&conf)
 		if err != nil {
-			log.Error("")
+			log.Error("Error creating storage memory")
 		}
-
 	case "postgresql":
 		db, err = pgsql.New(&conf)
 		if err != nil {
-			panic(err)
+			log.Error("Error creating storage postgresql")
 		}
 	default:
-		log.Panicf("Inside configuration file database.kind must be \"postgresql|memory\"")
+		log.Panic("Inside configuration file database.kind must be [postgresql|memory]")
 	}
 
+	// Select the consumer
 	switch conf.Consumer.Kind {
 	case "kafka":
 		qc, err = kafka.New(&conf)
 		if err != nil {
-			log.Error("")
+			log.Error("Error creating consumer kafka")
 		}
-
 	case "rabbitmq":
 		qc, err = rmq.New(&conf)
 		if err != nil {
-			log.Error("")
+			log.Error("Error creating consumer rabbitmq")
 		}
 	default:
-		log.Panicf("Inside configuration file conumer.kind must be \"rabbitmq|kafka\"")
+		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
 	}
 
 	qc.Connect()
