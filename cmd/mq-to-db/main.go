@@ -124,7 +124,7 @@ func main() {
 			panic(err)
 		}
 	default:
-		panic("must set either --inmemory or --mysql")
+		log.Panicf("Inside configuration file database.kind must be \"postgresql|memory\"")
 	}
 
 	switch conf.Consumer.Kind {
@@ -140,7 +140,7 @@ func main() {
 			log.Error("")
 		}
 	default:
-		panic("must set either --inmemory or --mysql")
+		log.Panicf("Inside configuration file conumer.kind must be \"rabbitmq|kafka\"")
 	}
 
 	qc.Connect()
