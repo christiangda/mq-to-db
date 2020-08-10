@@ -15,6 +15,10 @@ func New(c *config.Config) (storage.Store, error) {
 	return &memoryConf{}, nil
 }
 
+func (c *memoryConf) Connect(ctx context.Context) error {
+	return nil
+}
+
 func (c *memoryConf) Ping(ctx context.Context) error {
 	return nil
 }

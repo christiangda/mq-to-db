@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -94,7 +95,7 @@ type Config struct {
 func (c *Config) ToJSON() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return string(out)
 }
@@ -103,7 +104,7 @@ func (c *Config) ToJSON() string {
 func (c *Config) ToYAML() string {
 	out, err := yaml.Marshal(c)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return string(out)
 }
