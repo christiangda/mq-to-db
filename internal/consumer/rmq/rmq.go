@@ -40,6 +40,8 @@ type rabbitMQConf struct {
 // New create a new rabbitmq consumer
 func New(c *config.Config) (consumer.Consumer, error) {
 
+	log.Info("This is rmq con")
+
 	return &rabbitMQConf{
 		address:            c.Consumer.Address,
 		port:               c.Consumer.Port,

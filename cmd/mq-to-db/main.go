@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
 	"github.com/christiangda/mq-to-db/internal/messages"
@@ -21,7 +22,6 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -35,13 +35,14 @@ const (
 )
 
 var (
-	conf       config.Config
+	conf config.Config
+
 	log        *logrus.Entry
 	rootLogger = logrus.New()
 	v          = viper.New()
 )
 
-func init() {
+func init() { //package initializer
 
 	// Set default values
 	conf.Application.Name = appName
@@ -56,9 +57,7 @@ func init() {
 	conf.Application.BuildDate = version.BuildDate
 	conf.Application.VersionInfo = version.Info()
 	conf.Application.BuildInfo = version.BuildContext()
-}
 
-func main() {
 	// Server conf flags
 	flag.StringVar(&conf.Server.Address, "address", "127.0.0.1", "Server address")
 	flag.IntVar(&conf.Server.Port, "port", 8080, "Server port")
@@ -70,16 +69,14 @@ func main() {
 	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "keepAlivesEnabled", true, "Server KeepAlivesEnabled")
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
-
 	// Application conf var
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
 
 	flag.Parse()
-
-	host, err := os.Hostname()
-	if err != nil {
-		log.Fatal("Unable to get the host name")
-	}
+	// Use logrus for standard log output
+	// Note that `log` here references stdlib's log
+	// Not logrus imported under the name `log`.
+	rootLogger.SetOutput(os.Stdout)
 
 	// Logs conf
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
@@ -94,15 +91,17 @@ func main() {
 		rootLogger.SetLevel(logrus.InfoLevel)
 	}
 
-	rootLogger.SetOutput(os.Stdout)
-	// Set the output of the message for the current logrus instance,
-	// Output of logrus instance can be set to any io.writer
-	rootLogger.Out = os.Stdout
-
+	host, _ := os.Hostname()
 	log = rootLogger.WithFields(logrus.Fields{
 		"app":  appName,
 		"host": host,
 	})
+
+	log.Info("Application initialized")
+
+}
+
+func main() {
 
 	log.Infof("Starting...")
 
@@ -147,7 +146,7 @@ func main() {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	log.Debugf("Available Env Vars: %s", os.Environ())
+	log.Debugf("Environment Variables: %s", os.Environ())
 
 	log.Infof("Loading configuration file: %s", conf.Application.ConfigFile)
 	if err := v.ReadInConfig(); err != nil {
@@ -155,8 +154,7 @@ func main() {
 	}
 
 	log.Info("Configuring application")
-	err = v.Unmarshal(&conf)
-	if err != nil {
+	if err := v.Unmarshal(&conf); err != nil {
 		log.Fatalf("Unable to decode: %v", err)
 	}
 
@@ -165,19 +163,20 @@ func main() {
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
 	var qc consumer.Consumer
+	var err error // Necessary to handle errors inside switch/case
 
 	// Select the storage
 	switch conf.Database.Kind {
 	case "memory":
 		db, err = memory.New(&conf)
 		if err != nil {
-			log.Fatalf("Error creating storage memory: %s", err)
+			log.Fatal(err)
 		}
 		log.Info("Using  memory database")
 	case "postgresql":
 		db, err = pgsql.New(&conf)
 		if err != nil {
-			log.Fatalf("Error creating storage postgresql: %s", err)
+			log.Fatal(err)
 		}
 		log.Info("Using postgresql database")
 	default:
@@ -189,13 +188,13 @@ func main() {
 	case "kafka":
 		qc, err = kafka.New(&conf)
 		if err != nil {
-			log.Fatalf("Error creating consumer kafka: %s", err)
+			log.Fatal(err)
 		}
 		log.Info("Using kafka consumer")
 	case "rabbitmq":
 		qc, err = rmq.New(&conf)
 		if err != nil {
-			log.Fatalf("Error creating consumer rabbitmq: %s", err)
+			log.Fatal(err)
 		}
 		log.Info("Using rabbitmq consumer")
 	default:
@@ -210,7 +209,7 @@ func main() {
 	appCtx := context.Background()
 
 	log.Infof("Connecting to database")
-	if err = db.Connect(appCtx); err != nil {
+	if err := db.Connect(appCtx); err != nil {
 		log.Fatal("Error conecting to database")
 	}
 	defer db.Close()

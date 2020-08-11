@@ -30,6 +30,7 @@ binary
 ### Free books
 
 * https://golang.org/doc/effective_go.html#generality
+* [https://golang.org/doc/code.html](https://golang.org/doc/code.html)
 
 ### Databases
 
@@ -66,3 +67,7 @@ binary
 
 *  [https://www.rabbitmq.com/tutorials/tutorial-one-go.html](https://www.rabbitmq.com/tutorials/tutorial-one-go.html)
 *  [http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang](http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang)
+
+### Logs
+
+* [https://github.com/sirupsen/logrus](https://github.com/sirupsen/logrus)
