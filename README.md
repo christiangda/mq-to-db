@@ -4,6 +4,16 @@ Read from Message Queue System and Store into Database
 
 ## How to execute
 
+source code
+
+```bash
+git clone https://github.com/christiangda/mq-to-db.git
+cd mq-to-db/
+go run -race  ./cmd/mq-to-db/main.go --help
+```
+
+binary
+
 ```bash
 ./mq-to-db --help
 ```

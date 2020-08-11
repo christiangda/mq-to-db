@@ -193,7 +193,7 @@ func main() {
 	// This channel is used to wait all go routines
 	done := make(chan bool, 1)
 
-	go func() { // This go routine is to consume message
+	go func(done *chan bool) { // This go routine is to consume message
 		for m := range qc.Consume() { // Consumming messages from RabbitMQ channel
 
 			mt, err := messages.GetType(m)
@@ -218,7 +218,9 @@ func main() {
 			}
 
 		}
-	}()
+		// Notify main routine is done
+		*done <- true
+	}(&done)
 
 	// main routine blocked until others routines finished
 	<-done
