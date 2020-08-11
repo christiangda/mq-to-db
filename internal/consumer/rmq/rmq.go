@@ -6,22 +6,8 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
-	"golang.org/x/xerrors"
-)
-
-var (
-	log = logrus.New()
-
-	// ErrRabbitMqServerAddressEmpty is returned when
-	ErrRabbitMqServerAddressEmpty = xerrors.New("RabbitMQ server IPAddres cannot be empty")
-
-	// ErrRabbitMQServerPortEmpty is returned when
-	ErrRabbitMQServerPortEmpty = xerrors.New("RabbitMQ server Port cannot be empty")
-
-	// ErrRabbitMQServerQueueEmpty is returned when
-	ErrRabbitMQServerQueueEmpty = xerrors.New("RabbitMQ server Queue cannot be empty")
 )
 
 type rabbitMQConf struct {
@@ -53,20 +39,6 @@ type rabbitMQConf struct {
 
 // New create a new rabbitmq consumer
 func New(c *config.Config) (consumer.Consumer, error) {
-
-	// TODO: Improve error message and validations
-
-	if c.Consumer.Address == "" {
-		return nil, ErrRabbitMqServerAddressEmpty
-	}
-
-	if c.Consumer.Port == 0 {
-		return nil, ErrRabbitMQServerPortEmpty
-	}
-
-	if c.Consumer.Queue.Name == "" {
-		return nil, ErrRabbitMQServerQueueEmpty
-	}
 
 	return &rabbitMQConf{
 		address:            c.Consumer.Address,
@@ -118,14 +90,14 @@ func (c *rabbitMQConf) Connect() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to connect to RabbitMQ server \"%s:%d\" with user \"%s\" ", c.address, c.port, c.username)
+		log.Fatal(err)
 	}
 	//defer conn.Close()
 	c.conn = conn
 
 	ch, err := c.conn.Channel()
 	if err != nil {
-		log.Fatal("Failed to open channel")
+		log.Fatal(err)
 	}
 	//defer ch.Close()
 	c.channel = ch
@@ -140,7 +112,7 @@ func (c *rabbitMQConf) Connect() {
 		c.exchange.args,
 	)
 	if err != nil {
-		log.Fatalf("Failed to declare an exchange \"%s\"", c.exchange.name)
+		log.Fatal(err)
 	}
 
 	q, err := c.channel.QueueDeclare(
@@ -152,7 +124,7 @@ func (c *rabbitMQConf) Connect() {
 		c.queue.args,
 	)
 	if err != nil {
-		log.Fatalf("Failed to declare a queue \"%s\"", c.queue.name)
+		log.Fatal(err)
 	}
 
 	err = c.channel.QueueBind(
@@ -163,7 +135,7 @@ func (c *rabbitMQConf) Connect() {
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Failed to bind a queue \"%s\"", c.queue.name)
+		log.Fatal(err)
 	}
 }
 
@@ -180,7 +152,7 @@ func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
 		nil,   // args
 	)
 	if err != nil {
-		log.Fatalf("Failed to register a consumer queue \"%s\"", c.queue.name)
+		log.Fatal(err)
 	}
 
 	out := make(chan consumer.Messages)
