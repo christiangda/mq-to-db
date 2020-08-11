@@ -80,7 +80,6 @@ func New(c *config.Config) (consumer.Consumer, error) {
 
 // Connect to RabbitMQ server and channel
 func (c *rabbitMQConf) Connect() {
-	//conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port))
 
 	conn, err := amqp.DialConfig(
 		fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port),
