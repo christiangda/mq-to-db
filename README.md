@@ -2,7 +2,18 @@
 
 Read from Message Queue System and Store into Database
 
-## References
+## How to execute
+
+```bash
+./mq-to-db --help
+```
+
+## Internal References
+
+* [Configuration](docs/config.md)
+* [Messages Type](docs/messages.md)
+
+## External References
 
 ### Free books
 

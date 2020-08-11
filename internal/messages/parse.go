@@ -9,12 +9,12 @@ import (
 
 var (
 	// ErrUnableUnmarshalJSONMessageAsRaw is returned when
-	ErrUnableUnmarshalJSONMessageAsRaw = xerrors.New("Unable to Unmarshal JSON message as rawMessage")
+	ErrUnableUnmarshalJSONMessageAsRaw = xerrors.New("Unable to Unmarshal JSON message as raw")
 )
 
 func GetType(m consumer.Messages) (string, error) {
 
-	raw := rawMessage{}
+	raw := RAW{}
 	err := json.Unmarshal(m.Payload, &raw)
 	if err != nil {
 		return "", ErrUnableUnmarshalJSONMessageAsRaw

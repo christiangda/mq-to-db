@@ -190,11 +190,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// This channel is used to wait all go routines
 	done := make(chan bool, 1)
 
-	// routine to consume messages
-	go func() {
-		for m := range qc.Consume() {
+	go func() { // This go routine is to consume message
+		for m := range qc.Consume() { // Consumming messages from RabbitMQ channel
 
 			mt, err := messages.GetType(m)
 			if err != nil {
@@ -203,7 +203,7 @@ func main() {
 
 			switch mt {
 			case "SQL":
-				pl := messages.NewSQLMessage(m)
+				pl := messages.NewSQL(m)
 				res, err := db.ExecContext(appCtx, pl.Content.Sentence)
 				if err != nil {
 					log.Errorf("Error storing SQL payload payload: %v", err)

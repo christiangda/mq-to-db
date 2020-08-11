@@ -1,3 +1,3 @@
 package messages
 
-type rawMessage map[string]interface{}
+type RAW map[string]interface{}

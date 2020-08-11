@@ -27,7 +27,7 @@ type SQL struct {
 	Response   string `json:"RESPONSE" yaml:"RESPONSE"`
 }
 
-func NewSQLMessage(m consumer.Messages) *SQL {
+func NewSQL(m consumer.Messages) *SQL {
 	out := &SQL{}
 	err := json.Unmarshal(m.Payload, &out)
 	if err != nil {

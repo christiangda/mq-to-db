@@ -1,0 +1,70 @@
+# Configuration
+
+This is about how to fill the configuration file for the service
+
+The configuration file needed by the application need to be in `yaml` format.
+
+The configuration file could be `named as you want`, by default if you don't specified the parameter `--configFile` is `config.yaml`
+This could be located in any place, but by default when service start this find the configuration file in the following location:
+
+1. `./config.yaml` Next to the service binary `mq-to-db`
+2. `/etc/mq-to-db/config.yaml` Into the standard `Linux` configuration filesystem
+3. `$HOME/config.yaml`  Into the `user home` which is executing the service binary `mq-to-db`
+
+__NOTE:__ Remember that thanks to the parameter `--configFile` you can tell to the service which  configuration file you want to use, for example:
+
+1. `mq-to-db --configFile '/tmp/myconfig.yaml'`
+2. `mq-to-db --configFile './mq-to-db.yaml'`
+
+To read the config file we are using the `golang` package [viper](https://github.com/spf13/viper) and [pflag](https://github.com/spf13/pflag)
+
+## config.yaml
+
+The config file [config-sample.yaml](/config-sample.yaml) could be used as template
+
+```yaml
+---
+consumer:
+  kind: rabbitmq
+  address: 127.0.0.1
+  port: 5672
+  requestedHeartbeat: 25
+  connectionTimeout: 5000
+  networkRecoveryInterval: 5000
+  consumingQuote: 1000
+  automaticRecoveryEnabled: true
+  username: myuser
+  password: mypassword
+  virtualHost: myvirtualhost
+  isNoAck: false
+  exclusive: false
+  queue:
+    name: my.queue
+    routingKey: my.routeKey
+    durable: true
+    autoDelete: true
+    args:
+      x-message-ttl: 180000
+  exchange:
+    name: myexchage
+    type: topic
+    durable: true
+    autoDelete: false
+    args:
+      x-dead-letter-exchange: my.dead_letter
+
+database:
+  kind: postgresql
+  address: 127.0.0.1
+  port: 5432
+  username: myusername
+  passsword: mypassword
+  database: mydatabase
+  sslMode: disable
+  maxPingTimeOut: 1s
+  maxQueryTimeOut: 30s
+  connMaxLifetime: 0
+  maxIdleConns: 5
+  maxOpenConns: 20
+
+```
