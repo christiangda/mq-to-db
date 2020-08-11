@@ -40,8 +40,6 @@ type rabbitMQConf struct {
 // New create a new rabbitmq consumer
 func New(c *config.Config) (consumer.Consumer, error) {
 
-	log.Info("This is rmq con")
-
 	return &rabbitMQConf{
 		address:            c.Consumer.Address,
 		port:               c.Consumer.Port,
@@ -83,12 +81,16 @@ func New(c *config.Config) (consumer.Consumer, error) {
 // Connect to RabbitMQ server and channel
 func (c *rabbitMQConf) Connect() {
 
+	amqpConfig := amqp.Config{}
+
+	amqpConfig.Heartbeat = c.requestedHeartbeat
+	if c.virtualHost != "" {
+		amqpConfig.Vhost = c.virtualHost
+	}
+
 	conn, err := amqp.DialConfig(
 		fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port),
-		amqp.Config{
-			Heartbeat: c.requestedHeartbeat,
-			Vhost:     c.virtualHost,
-		},
+		amqpConfig,
 	)
 	if err != nil {
 		log.Fatal(err)

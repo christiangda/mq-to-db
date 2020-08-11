@@ -20,6 +20,25 @@ binary
 ./mq-to-db --help
 ```
 
+with
+
+RabbitMQ
+
+```bash
+docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+PostgreSQL
+```bash
+docker run --rm  --name postgresql -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
+
+# logs
+docker logs postgresql -f
+
+# remember to  stop and remove (--rm in docker run do it for you)
+docker stop postgresql
+```
+
 ## Internal References
 
 * [Configuration](docs/config.md)

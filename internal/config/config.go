@@ -12,6 +12,11 @@ import (
 type args map[string]interface{}
 
 // Config is the structure with all configuration
+//
+// how is the name into
+// the config file
+//     |                  |           |
+// `mapstructure:"type" json:"type" yaml:"type"`
 type Config struct {
 
 	// This part is private, will be filled using flags, the file values overrides flags values
@@ -46,7 +51,7 @@ type Config struct {
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {
 			Name       string `json:"name" yaml:"name"`
-			Kind       string `json:"type" yaml:"type"`
+			Kind       string `mapstructure:"type" json:"type" yaml:"type"` // mapstructure is needed because the field into the config file is type and we are changing to kind
 			Durable    bool   `json:"durable" yaml:"durable"`
 			AutoDelete bool   `json:"autoDelete" yaml:"autoDelete"`
 			Args       args   `json:"args" yaml:"args"`

@@ -29,9 +29,9 @@ consumer:
   address: 127.0.0.1
   port: 5672
   requestedHeartbeat: 25s
-  username: myuser
-  password: mypassword
-  virtualHost: myvirtualhost
+  username: guest
+  password: guest
+  # virtualHost: myvirtualhost # Optional
   queue:
     name: my.queue
     routingKey: my.routeKey
@@ -52,9 +52,9 @@ database:
   kind: postgresql
   address: 127.0.0.1
   port: 5432
-  username: myusername
-  passsword: mypassword
-  database: mydatabase
+  username: postgres
+  password: mysecretpassword
+  database: postgres
   sslMode: disable
   maxPingTimeOut: 1s
   maxQueryTimeOut: 30s
