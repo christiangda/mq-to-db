@@ -12,6 +12,8 @@ cd mq-to-db/
 go run -race  ./cmd/mq-to-db/main.go --help
 ```
 
+__NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang.org/race-detector) because we are using [Go Concurrency](https://blog.golang.org/pipelines)
+
 binary
 
 ```bash
