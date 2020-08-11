@@ -2,6 +2,7 @@ package rmq
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
@@ -27,23 +28,18 @@ type rabbitMQConf struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
-	address                  string
-	port                     int
-	requestedHeartbeat       int
-	connectionTimeout        int
-	networkRecoveryInterval  int
-	consumingQuote           int
-	automaticRecoveryEnabled bool
-	username                 string
-	password                 string
-	virtualHost              string
-	isNoAck                  bool
-	exclusive                bool
-	queue                    struct {
+	address            string
+	port               int
+	requestedHeartbeat time.Duration
+	username           string
+	password           string
+	virtualHost        string
+	queue              struct {
 		name       string
 		routingKey string
 		durable    bool
 		autoDelete bool
+		exclusive  bool
 		args       map[string]interface{}
 	}
 	exchange struct {
@@ -73,29 +69,25 @@ func New(c *config.Config) (consumer.Consumer, error) {
 	}
 
 	return &rabbitMQConf{
-		address:                  c.Consumer.Address,
-		port:                     c.Consumer.Port,
-		requestedHeartbeat:       c.Consumer.RequestedHeartbeat,
-		connectionTimeout:        c.Consumer.ConnectionTimeout,
-		networkRecoveryInterval:  c.Consumer.NetworkRecoveryInterval,
-		consumingQuote:           c.Consumer.ConsumingQuote,
-		automaticRecoveryEnabled: c.Consumer.AutomaticRecoveryEnabled,
-		username:                 c.Consumer.Username,
-		password:                 c.Consumer.Password,
-		virtualHost:              c.Consumer.VirtualHost,
-		isNoAck:                  c.Consumer.IsNoAck,
-		exclusive:                c.Consumer.Exclusive,
+		address:            c.Consumer.Address,
+		port:               c.Consumer.Port,
+		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
+		username:           c.Consumer.Username,
+		password:           c.Consumer.Password,
+		virtualHost:        c.Consumer.VirtualHost,
 		queue: struct {
 			name       string
 			routingKey string
 			durable    bool
 			autoDelete bool
+			exclusive  bool
 			args       map[string]interface{}
 		}{
 			c.Consumer.Queue.Name,
 			c.Consumer.Queue.RoutingKey,
 			c.Consumer.Queue.Durable,
 			c.Consumer.Queue.AutoDelete,
+			c.Consumer.Queue.Exclusive,
 			c.Consumer.Queue.Args,
 		},
 		exchange: struct {
@@ -116,7 +108,15 @@ func New(c *config.Config) (consumer.Consumer, error) {
 
 // Connect to RabbitMQ server and channel
 func (c *rabbitMQConf) Connect() {
-	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port))
+	//conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port))
+
+	conn, err := amqp.DialConfig(
+		fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port),
+		amqp.Config{
+			Heartbeat: c.requestedHeartbeat,
+			Vhost:     c.virtualHost,
+		},
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ server \"%s:%d\" with user \"%s\" ", c.address, c.port, c.username)
 	}
@@ -147,7 +147,7 @@ func (c *rabbitMQConf) Connect() {
 		c.queue.name,
 		c.queue.durable,
 		c.queue.autoDelete,
-		true,  // exclusive
+		c.queue.exclusive,
 		false, // no-wait
 		c.queue.args,
 	)
@@ -159,7 +159,7 @@ func (c *rabbitMQConf) Connect() {
 		q.Name,
 		c.queue.routingKey,
 		c.exchange.name,
-		false,
+		false, // no-wait
 		nil,
 	)
 	if err != nil {

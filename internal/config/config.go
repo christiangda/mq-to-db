@@ -13,6 +13,8 @@ type args map[string]interface{}
 
 // Config is the structure with all configuration
 type Config struct {
+
+	// This part is private, will be filled using flags, the file values overrides flags values
 	Server struct {
 		Address           string        `json:"address" yaml:"address"`
 		Port              int           `json:"port" yaml:"port"`
@@ -27,24 +29,19 @@ type Config struct {
 	}
 
 	Consumer struct {
-		Kind                     string `json:"kind" yaml:"kind"`
-		Address                  string `json:"address" yaml:"address"`
-		Port                     int    `json:"port" yaml:"port"`
-		RequestedHeartbeat       int    `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
-		ConnectionTimeout        int    `json:"connectionTimeout" yaml:"connectionTimeout"`
-		NetworkRecoveryInterval  int    `json:"networkRecoveryInterval" yaml:"networkRecoveryInterval"`
-		ConsumingQuote           int    `json:"consumingQuote" yaml:"consumingQuote"`
-		AutomaticRecoveryEnabled bool   `json:"automaticRecoveryEnabled" yaml:"automaticRecoveryEnabled"`
-		Username                 string `json:"username" yaml:"username"`
-		Password                 string `json:"password" yaml:"password"`
-		VirtualHost              string `json:"virtualHost" yaml:"virtualHost"`
-		IsNoAck                  bool   `json:"isNoAck" yaml:"isNoAck"`
-		Exclusive                bool   `json:"exclusive" yaml:"exclusive"`
-		Queue                    struct {
+		Kind               string        `json:"kind" yaml:"kind"`
+		Address            string        `json:"address" yaml:"address"`
+		Port               int           `json:"port" yaml:"port"`
+		RequestedHeartbeat time.Duration `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
+		Username           string        `json:"username" yaml:"username"`
+		Password           string        `json:"password" yaml:"password"`
+		VirtualHost        string        `json:"virtualHost" yaml:"virtualHost"`
+		Queue              struct {
 			Name       string `json:"name" yaml:"name"`
 			RoutingKey string `json:"routingKey" yaml:"routingKey"`
 			Durable    bool   `json:"durable" yaml:"durable"`
 			AutoDelete bool   `json:"autoDelete" yaml:"autoDelete"`
+			Exclusive  bool   `json:"exclusive" yaml:"exclusive"`
 			Args       args   `json:"args" yaml:"args"`
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {

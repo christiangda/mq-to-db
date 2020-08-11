@@ -28,21 +28,16 @@ consumer:
   kind: rabbitmq
   address: 127.0.0.1
   port: 5672
-  requestedHeartbeat: 25
-  connectionTimeout: 5000
-  networkRecoveryInterval: 5000
-  consumingQuote: 1000
-  automaticRecoveryEnabled: true
+  requestedHeartbeat: 25s
   username: myuser
   password: mypassword
   virtualHost: myvirtualhost
-  isNoAck: false
-  exclusive: false
   queue:
     name: my.queue
     routingKey: my.routeKey
     durable: true
     autoDelete: true
+    exclusive: false
     args:
       x-message-ttl: 180000
   exchange:
@@ -66,5 +61,4 @@ database:
   connMaxLifetime: 0
   maxIdleConns: 5
   maxOpenConns: 20
-
 ```

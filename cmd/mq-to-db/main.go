@@ -106,6 +106,33 @@ func main() {
 
 	log.Infof("Starting...")
 
+	// Viper default values to conf parameters when config file doesn't have it
+	// The config file values overrides these
+	// ***** DATABASE *****
+	// database.kind: postgresql
+	// database.port: 5432
+	// database.sslMode: disable
+	// database.maxPingTimeOut: 1s
+	// database.maxQueryTimeOut: 30s
+	// database.connMaxLifetime: 0
+	// database.maxIdleConns: 5
+	// database.maxOpenConns: 20
+	v.SetDefault("database.kind", "postgresql")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.sslMode", "disable")
+	v.SetDefault("Database.maxPingTimeOut", "1s")
+	v.SetDefault("Database.maxQueryTimeOut", "30s")
+	v.SetDefault("Database.connMaxLifetime", 0)
+	v.SetDefault("Database.maxIdleConns", 5)
+	v.SetDefault("Database.maxIdleConns", 20)
+	// ***** RabbitMQ *****
+	// consumer.kind: rabbitmq
+	// consumer.port: 5672
+	// consumer.requestedHeartbeat: 25
+	v.SetDefault("consumer.kind", "rabbitmq")
+	v.SetDefault("consumer.port", 5672)
+	v.SetDefault("consumer.requestedHeartbeat", "10s")
+
 	// Read config file
 	v.SetConfigType("yaml")
 	v.SetConfigName(filepath.Base(conf.Application.ConfigFile))
@@ -132,8 +159,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to decode: %v", err)
 	}
-
-	// TODO: Define default values to be used when config file doesn't has it
 
 	log.Debugf("Application configuration: %s", conf.ToJSON())
 

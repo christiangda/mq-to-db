@@ -31,6 +31,13 @@ binary
 
 * https://golang.org/doc/effective_go.html#generality
 
+### Databases
+
+* [https://golang.org/pkg/database/sql/](https://golang.org/pkg/database/sql/)
+* [https://golang.org/s/sqldrivers](https://golang.org/s/sqldrivers)
+* [https://astaxie.gitbooks.io/build-web-application-with-golang/content/en/05.4.html](https://astaxie.gitbooks.io/build-web-application-with-golang/content/en/05.4.html)
+* [https://gist.github.com/divan/eb11ddc97aab765fb9b093864410fd25](https://gist.github.com/divan/eb11ddc97aab765fb9b093864410fd25)
+
 ### Project Layout
 
 * [https://github.com/golang-standards/project-layout](https://github.com/golang-standards/project-layout)
@@ -50,3 +57,12 @@ binary
 * [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml)
 * [https://www.sohamkamani.com/golang/2018-07-19-golang-omitempty/](https://www.sohamkamani.com/golang/2018-07-19-golang-omitempty/)
 * [https://ubuntu.com/blog/api-v3-of-the-yaml-package-for-go-is-available](https://ubuntu.com/blog/api-v3-of-the-yaml-package-for-go-is-available)
+
+### Config Files, Flags, Env Vars
+
+* [https://blog.gopheracademy.com/advent-2014/configuration-with-fangs/](https://blog.gopheracademy.com/advent-2014/configuration-with-fangs/)
+
+### RabbitMQ
+
+*  [https://www.rabbitmq.com/tutorials/tutorial-one-go.html](https://www.rabbitmq.com/tutorials/tutorial-one-go.html)
+*  [http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang](http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang)
