@@ -10,6 +10,9 @@ source code
 git clone https://github.com/christiangda/mq-to-db.git
 cd mq-to-db/
 go run -race  ./cmd/mq-to-db/main.go --help
+
+# and then
+go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ```
 
 __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang.org/race-detector) because we are using [Go Concurrency](https://blog.golang.org/pipelines)
@@ -20,8 +23,6 @@ binary
 ./mq-to-db --help
 ```
 
-with
-
 RabbitMQ
 
 ```bash
@@ -29,6 +30,7 @@ docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-manag
 ```
 
 PostgreSQL
+
 ```bash
 docker run --rm  --name postgresql -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
 
@@ -37,6 +39,12 @@ docker logs postgresql -f
 
 # remember to  stop and remove (--rm in docker run do it for you)
 docker stop postgresql
+```
+
+mq-to-db
+
+```bash
+go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ```
 
 ## Internal References
