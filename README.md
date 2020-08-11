@@ -98,3 +98,7 @@ go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ### Logs
 
 * [https://github.com/sirupsen/logrus](https://github.com/sirupsen/logrus)
+
+### Metrics
+
+* [https://prometheus.io/docs/guides/go-application/](https://prometheus.io/docs/guides/go-application/)
