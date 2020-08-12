@@ -13,9 +13,9 @@ func New(c *config.Config) (consumer.Consumer, error) {
 
 func (c *kafkaConf) Connect() {}
 
-func (c *kafkaConf) Consume() <-chan consumer.Messages {
+func (c *kafkaConf) Consume() (<-chan consumer.Messages, error) {
 	out := make(chan consumer.Messages)
-	return out
+	return out, nil
 }
 
 func (c *kafkaConf) Close() {}

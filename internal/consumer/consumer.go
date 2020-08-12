@@ -7,7 +7,7 @@ import "time"
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {
 	Connect()
-	Consume() <-chan Messages
+	Consume() (<-chan Messages, error)
 	Close()
 }
 

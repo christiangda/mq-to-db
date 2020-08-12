@@ -143,19 +143,19 @@ func (c *rabbitMQConf) Connect() {
 }
 
 // Consume messages from the channel
-func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
+func (c *rabbitMQConf) Consume() (<-chan consumer.Messages, error) {
 
 	msgs, err := c.channel.Consume(
 		c.queue.name,
-		"",    // consumer
-		true,  // auto-ack
-		false, // exclusive
-		false, // no-local
-		false, // no-wait
-		nil,   // args
+		"",                // consumer
+		true,              // auto-ack
+		c.queue.exclusive, // exclusive
+		false,             // no-local
+		false,             // no-wait
+		nil,               // args
 	)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	out := make(chan consumer.Messages)
@@ -185,7 +185,7 @@ func (c *rabbitMQConf) Consume() <-chan consumer.Messages {
 	}
 	close(out)
 
-	return out
+	return out, nil
 }
 
 // Close the channel connection

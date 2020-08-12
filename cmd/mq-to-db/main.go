@@ -201,18 +201,20 @@ func main() {
 		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
 	}
 
-	log.Infof("Connecting to consumer")
-	qc.Connect()
-	defer qc.Close()
-
 	// Application context
 	appCtx := context.Background()
 
+	// Try to connecto to Storage first, and if everithing is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
 		log.Fatal("Error conecting to database")
 	}
-	defer db.Close()
+	defer db.Close() // is here for a moment
+
+	// Try to connect to queue consumer
+	log.Infof("Connecting to consumer")
+	qc.Connect()
+	defer qc.Close() // is here for a moment
 
 	// This channel is used to wait all go routines
 	done := make(chan bool, 1)

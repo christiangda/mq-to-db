@@ -102,3 +102,7 @@ go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ### Metrics
 
 * [https://prometheus.io/docs/guides/go-application/](https://prometheus.io/docs/guides/go-application/)
+
+### Test
+
+* [https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/](https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/)
