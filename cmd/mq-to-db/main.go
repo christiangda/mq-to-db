@@ -220,7 +220,13 @@ func main() {
 	done := make(chan bool, 1)
 
 	go func(done *chan bool) { // This go routine is to consume message
-		for m := range qc.Consume() { // Consumming messages from RabbitMQ channel
+
+		msgs, err := qc.Consume() // Consumming messages from RabbitMQ channel
+		if err != nil {
+			log.Error(err)
+		}
+
+		for m := range msgs {
 
 			mt, err := messages.GetType(m)
 			if err != nil {
