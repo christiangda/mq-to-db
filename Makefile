@@ -2,16 +2,19 @@
 # VERSION			:= $(shell git describe --tags)
 # BUILD 			:= $(shell git rev-parse --short HEAD)
 #PROJECT_NAME 	:= $(shell basename "$(PWD)")
-PROJECT_NAME 	:= mq-to-db
-PROJECT_BIN_PATH := cmd
+PROJECT_NAME 	?= mq-to-db
 
 # Golang
-GO ?= go
-GO_BUILD ?= $(GO) build
-GO_TEST ?= $(GO) test
-GO_FMT ?= $(GO)fmt
-GO_MOD ?= $(GO) mod
-GO_OPTS ?= -race -v
+GO               ?= go
+GO_BUILD         ?= $(GO) build
+GO_TEST          ?= $(GO) test
+GO_FMT           ?= $(GO)fmt
+GO_MOD           ?= $(GO) mod
+GO_OPTS          ?= -v
+GO_HOST_OS       ?= $(shell $(GO) env GOHOSTOS)
+GO_HOST_ARCH     ?= $(shell $(GO) env GOHOSTARCH)
+GO_OS            ?= linux
+GO_ARCH          ?= amd64
 GO_VENDOR_FOLDER ?= ./vendor
 
 # Container
@@ -23,7 +26,11 @@ CONTAINER_IMAGE_NAME ?= $(PROJECT_NAME)
 CONTAINER_IMAGE_REPO ?= christiangda
 CONTAINER_IMAGE_TAG ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
-
+ifeq ($(GO_HOST_ARCH),amd64)
+    ifeq ($(GO_HOST_OS),$(filter $(GO_HOST_OS),linux))
+        GO_OPTS := $(GO_OPTS) -race
+    endif
+endif
 #
 .PHONY: all
 all: go-lint go-tidy go-test go-build container-build
@@ -40,6 +47,7 @@ go-fmt:
 .PHONY: go-build
 go-build:
 	@echo "--> Building"
+	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) \
 	$(GO_BUILD) $(GO_OPTS) -o $(PROJECT_NAME) $$(find ./cmd -name '*.go' -print)
 
 .PHONY: go-update-deps
