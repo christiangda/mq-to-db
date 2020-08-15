@@ -1,5 +1,4 @@
 ARG ARCH="amd64"
-ARG OS="linux"
 ARG PROJECT_NAME="mq-to-db"
 
 FROM ${ARCH}/busybox:glibc
@@ -16,14 +15,15 @@ EXPOSE  ${METRICS_PORT}
 RUN mkdir -p /home/nobody && chown -R nobody.nogroup /home/nobody
 ENV HOME="/home/nobody"
 
-USER nobody
-WORKDIR ${HOME}
+COPY ${PROJECT_NAME} ${HOME}/${PROJECT_NAME}
+RUN chmod +x ${HOME}/${PROJECT_NAME}
 
-COPY /${PROJECT_NAME}  /bin/${PROJECT_NAME}
-
-HEALTHCHECK CMD wget --spider -S "http://localhost:${METRICS_PORT}/health" -T 60 2>&1 || exit 1
+#HEALTHCHECK CMD wget --spider -S "http://localhost:${METRICS_PORT}/health" -T 60 2>&1 || exit 1
 
 VOLUME ["/home/nobody"]
 
-ENTRYPOINT  [ "/bin/${PROJECT_NAME}" ]
-# CMD  [ "/bin/${PROJECT_NAME}" ]
+USER nobody
+WORKDIR ${HOME}
+
+#ENTRYPOINT  [ "${PROJECT_NAME}" ]
+CMD  [ ./mq-to-db]

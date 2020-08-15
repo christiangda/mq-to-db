@@ -11,20 +11,22 @@ GO_BUILD ?= $(GO) build
 GO_TEST ?= $(GO) test
 GO_FMT ?= $(GO)fmt
 GO_MOD ?= $(GO) mod
-GO_OPTS ?= -race
-
-GO_VENDOR_FOLDER ?= vendor
+GO_OPTS ?= -race -v
+GO_VENDOR_FOLDER ?= ./vendor
 
 # Container
-# CONTAINER_BUILD_COMMAND ?= docker build
-# CONTAINER_BUILD_FILE ?= ./Dockerfile
-# CONTAINER_IMAGE_NAME ?= mq-to-db
-# CONTAINER_IMAGE_TAGS ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
+CONTAINER_BUILD_COMMAND ?= docker build
+CONTAINER_BUILD_FILE ?= ./Dockerfile
+CONTAINER_BUILD_CONTEXT ?= ./
+CONTAINER_IMAGE_ARCH ?= amd64
+CONTAINER_IMAGE_NAME ?= $(PROJECT_NAME)
+CONTAINER_IMAGE_REPO ?= christiangda
+CONTAINER_IMAGE_TAG ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
 
 #
 .PHONY: all
-all: go-lint go-tidy go-test go-build
+all: go-lint go-tidy go-test go-build container-build
 
 .PHONY: go-lint
 go-lint:
@@ -33,48 +35,26 @@ go-lint:
 .PHONY: go-fmt
 go-fmt:
 	@echo "--> Checking formating"
-	@resp=$$($(GO_FMT) $(GO_OPTS) -d $$(find . -path cmd -name '*.go' -print) 2>&1); \
-		if [ -n "$${resp}" ]; then \
-			echo "-->--> $${resp}"; echo; \
-			echo "-->--> [ERR] Use gofmt for formatting code."; \
-			exit 1; \
-		else \
-			echo "--> [OK]"; \
-		fi
+	$(GO_FMT) $(GO_OPTS) -d $$(find . -path $(GO_VENDOR_FOLDER) -prune -o -name '*.go' -print)
 
 .PHONY: go-build
 go-build:
 	@echo "--> Building"
-	@resp=$$($(GO_BUILD) $(GO_OPTS) -o $(PROJECT_NAME) $$(find ./cmd -name '*.go' -print) 2>&1); \
-		if [ -n "$${resp}" ]; then \
-			echo "-->--> $${resp}"; echo; \
-			echo "-->--> [ERR]"; \
-			exit 1; \
-		else \
-			echo "--> [OK]"; \
-		fi
+	$(GO_BUILD) $(GO_OPTS) -o $(PROJECT_NAME) $$(find ./cmd -name '*.go' -print)
 
 .PHONY: go-update-deps
 go-update-deps:
 	@echo "--> Updating Go dependencies"
-	@for dep in $$($(GO) list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all); do \
+	for dep in $$($(GO) list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all); do \
 		$(GO) get $$dep; \
 	done
-	@echo "--> [OK]"
 
 .PHONY: go-tidy
 go-tidy:
 	@echo "--> Tidying"
-	@resp=$$($(GO_MOD) tidy); \
-		if [ -n "$${resp}" ]; then \
-			echo "-->--> $${resp}"; echo; \
-			echo "-->--> [ERR]"; \
-			exit 1; \
-		else \
-			echo "--> [OK]"; \
-		fi
-
+	$(GO_MOD) tidy
 ifneq (,$(wildcard $(GO_VENDOR_FOLDER)))
+	@echo "--> Generating Vendor folder"
 	$(GO_MOD) vendor
 endif
 
@@ -89,10 +69,10 @@ clean:
 .PHONY: container-build
 container-build:
 	@echo "--> Building container image"
+	$(CONTAINER_BUILD_COMMAND) \
+		--build-arg ARCH="$(CONTAINER_IMAGE_ARCH)" \
+		--build-arg PROJECT_NAME="$(CONTAINER_IMAGE_NAME)" \
+		--tag "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)" \
+		--file $(CONTAINER_BUILD_FILE) \
+		$(CONTAINER_BUILD_CONTEXT)
 
-	# $(CONTAINER_BUILD_COMMAND) \
-	# 	--build-arg ARCH="$*" \
-	# 	--build-arg OS="linux" \
-	# 	--tag "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$*:$(DOCKER_IMAGE_TAG)" \
-	# 	--file $(DOCKERFILE_PATH) \
-	# 	$(DOCKERBUILD_CONTEXT)
