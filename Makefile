@@ -8,6 +8,8 @@ PROJECT_NAME 	?= mq-to-db
 GO               ?= go
 GO_BUILD         ?= $(GO) build
 GO_TEST          ?= $(GO) test
+GO_CLEAN         ?= $(GO) clean
+GO_CLEAN_OPTS    ?= -n -x -i
 GO_FMT           ?= $(GO)fmt
 GO_MOD           ?= $(GO) mod
 GO_OPTS          ?= -v
@@ -31,9 +33,10 @@ ifeq ($(GO_HOST_ARCH),amd64)
         GO_OPTS := $(GO_OPTS) -race
     endif
 endif
+
 #
 .PHONY: all
-all: go-lint go-tidy go-test go-build container-build
+all: clean go-lint go-tidy go-test go-build container-build
 
 .PHONY: go-lint
 go-lint:
@@ -73,6 +76,8 @@ go-test:
 .PHONY: clean
 clean:
 	@echo "--> Cleaning"
+	$(GO_CLEAN) $(GO_CLEAN_OPTS)
+	rm -rf $(PROJECT_NAME)
 
 .PHONY: container-build
 container-build:
