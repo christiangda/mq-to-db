@@ -47,6 +47,19 @@ mq-to-db
 go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ```
 
+## How to build
+
+```bash
+go build \
+    -o mq-to-db \
+    -ldflags "-X github.com/mq-to-db/internal/verion.Version=$(git rev-parse --abbrev-ref HEAD)" \
+    -ldflags "-X github.com/mq-to-db/internal/verion.Revision=$(git rev-parse --short HEAD)" \
+    -ldflags "-X github.com/mq-to-db/internal/verion.Branch=$(git rev-parse --abbrev-ref HEAD)" \
+    -ldflags "-X github.com/mq-to-db/internal/verion.BuildUser=$(git config --get user.name)" \
+    -ldflags "-X github.com/mq-to-db/internal/verion.BuildDate=$(date +'%Y-%m-%dT%H:%M:%S')" \
+    ./cmd/mq-to-db/main.go
+```
+
 ## Internal References
 
 * [Configuration](docs/config.md)
@@ -106,3 +119,8 @@ go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ### Test
 
 * [https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/](https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/)
+
+### Variable Injection
+
+* [https://blog.alexellis.io/inject-build-time-vars-golang/](https://blog.alexellis.io/inject-build-time-vars-golang/)
+* [https://goenning.net/2017/01/25/adding-custom-data-go-binaries-compile-time/](https://goenning.net/2017/01/25/adding-custom-data-go-binaries-compile-time/)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -55,8 +56,8 @@ func init() { //package initializer
 	conf.Application.GoVersion = version.GoVersion
 	conf.Application.BuildUser = version.BuildUser
 	conf.Application.BuildDate = version.BuildDate
-	conf.Application.VersionInfo = version.Info()
-	conf.Application.BuildInfo = version.BuildContext()
+	conf.Application.VersionInfo = version.GetVersionInfo()
+	conf.Application.BuildInfo = version.GetVersionInfoExtended()
 
 	// Server conf flags
 	flag.StringVar(&conf.Server.Address, "address", "127.0.0.1", "Server address")
@@ -71,8 +72,15 @@ func init() { //package initializer
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
 	// Application conf var
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
+	// Application version
+	showVersion := flag.Bool("version", false, "Show version")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(&conf.Application.Version)
+		os.Exit(0)
+	}
 	// Use logrus for standard log output
 	// Note that `log` here references stdlib's log
 	// Not logrus imported under the name `log`.
