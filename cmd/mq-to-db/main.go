@@ -73,12 +73,24 @@ func init() { //package initializer
 	// Application conf var
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
 	// Application version
-	showVersion := flag.Bool("version", false, "Show version")
+	showVersion := flag.Bool("version", false, "Show application version")
+	showVersionInfo := flag.Bool("versionInfo", false, "Show application version information")
+	showBuildInfo := flag.Bool("buildInfo", false, "Show application build information")
 
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println(&conf.Application.Version)
+		fmt.Println(conf.Application.Version)
+		os.Exit(0)
+	}
+
+	if *showVersionInfo {
+		fmt.Println(conf.Application.VersionInfo)
+		os.Exit(0)
+	}
+
+	if *showBuildInfo {
+		fmt.Println(conf.Application.BuildInfo)
 		os.Exit(0)
 	}
 	// Use logrus for standard log output

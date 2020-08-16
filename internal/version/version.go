@@ -6,12 +6,12 @@ import (
 )
 
 // Populated at build-time.
-// go build -ldflags \
-// “-X github.com/mq-to-db/internal/verion.Version=$(git rev-parse --abbrev-ref HEAD) \
-// -X github.com/mq-to-db/internal/verion.Revision=$(git rev-parse --short HEAD) \
-// -X github.com/mq-to-db/internal/verion.Branch=$(git rev-parse --abbrev-ref HEAD) \
-// -X github.com/mq-to-db/internal/verion.BuildUser=$(git config --get user.name) \
-// -X github.com/mq-to-db/internal/verion.BuildDate=$(date +”%Y-%m-%dT%H:%M:%S”)”
+// go build \
+// -ldflags "-X github.com/mq-to-db/internal/verion.Version=$(git rev-parse --abbrev-ref HEAD)" \
+// -ldflags "-X github.com/mq-to-db/internal/verion.Revision=$(git rev-parse --short HEAD)" \
+// -ldflags "-X github.com/mq-to-db/internal/verion.Branch=$(git rev-parse --abbrev-ref HEAD)" \
+// -ldflags "-X github.com/mq-to-db/internal/verion.BuildUser=$(git config --get user.name)" \
+// -ldflags "-X github.com/mq-to-db/internal/verion.BuildDate=$(date +'%Y-%m-%dT%H:%M:%S')"
 var (
 	Version   string
 	Revision  string

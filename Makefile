@@ -1,8 +1,10 @@
 # #
-# VERSION			:= $(shell git describe --tags)
-# BUILD 			:= $(shell git rev-parse --short HEAD)
-#PROJECT_NAME 	:= $(shell basename "$(PWD)")
-PROJECT_NAME 	?= mq-to-db
+APP_NAME 	 ?= mq-to-db
+GIT_VERSION  ?= $(shell git rev-parse --abbrev-ref HEAD)
+GIT_REVISION ?= $(shell git rev-parse HEAD | tr -d '\040\011\012\015\n')
+GIT_BRANCH   ?= $(shell git rev-parse --abbrev-ref HEAD | tr -d '\040\011\012\015\n')
+GIT_USER     ?= $(shell git config --get user.name | tr -d '\040\011\012\015\n')
+BUILD_DATE   ?= $(shell date +'%Y-%m-%dT%H:%M:%S')
 
 # Golang
 GO               ?= go
@@ -18,13 +20,14 @@ GO_HOST_ARCH     ?= $(shell $(GO) env GOHOSTARCH)
 GO_OS            ?= linux
 GO_ARCH          ?= amd64
 GO_VENDOR_FOLDER ?= ./vendor
+GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(GIT_VERSION) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(GIT_REVISION) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(GIT_BRANCH) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(GIT_USER)\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(BUILD_DATE)"
 
 # Container
 CONTAINER_BUILD_COMMAND ?= docker build
 CONTAINER_BUILD_FILE ?= ./Dockerfile
 CONTAINER_BUILD_CONTEXT ?= ./
 CONTAINER_IMAGE_ARCH ?= amd64
-CONTAINER_IMAGE_NAME ?= $(PROJECT_NAME)
+CONTAINER_IMAGE_NAME ?= $(APP_NAME)
 CONTAINER_IMAGE_REPO ?= christiangda
 CONTAINER_IMAGE_TAG ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
@@ -51,7 +54,7 @@ go-fmt:
 go-build:
 	@echo "--> Building"
 	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) \
-	$(GO_BUILD) $(GO_OPTS) -o $(PROJECT_NAME) $$(find ./cmd -name '*.go' -print)
+	$(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
 
 .PHONY: go-update-deps
 go-update-deps:
@@ -77,14 +80,14 @@ go-test:
 clean:
 	@echo "--> Cleaning"
 	$(GO_CLEAN) $(GO_CLEAN_OPTS)
-	rm -rf $(PROJECT_NAME)
+	rm -rf $(APP_NAME)
 
 .PHONY: container-build
 container-build:
 	@echo "--> Building container image"
 	$(CONTAINER_BUILD_COMMAND) \
 		--build-arg ARCH="$(CONTAINER_IMAGE_ARCH)" \
-		--build-arg PROJECT_NAME="$(CONTAINER_IMAGE_NAME)" \
+		--build-arg APP_NAME="$(CONTAINER_IMAGE_NAME)" \
 		--tag "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)" \
 		--file $(CONTAINER_BUILD_FILE) \
 		$(CONTAINER_BUILD_CONTEXT)
