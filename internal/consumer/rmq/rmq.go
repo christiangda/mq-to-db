@@ -29,6 +29,7 @@ type Consumer struct {
 		durable    bool
 		autoDelete bool
 		exclusive  bool
+		autoACK    bool
 		args       map[string]interface{}
 	}
 	exchange struct {
@@ -56,6 +57,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 			durable    bool
 			autoDelete bool
 			exclusive  bool
+			autoACK    bool
 			args       map[string]interface{}
 		}{
 			c.Consumer.Queue.Name,
@@ -63,6 +65,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 			c.Consumer.Queue.Durable,
 			c.Consumer.Queue.AutoDelete,
 			c.Consumer.Queue.Exclusive,
+			c.Consumer.Queue.AutoACK,
 			c.Consumer.Queue.Args,
 		},
 		exchange: struct {
@@ -151,7 +154,7 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 	msgs, err := c.channel.Consume(
 		c.queue.name,
 		"",                // consumer
-		true,              // auto-ack
+		c.queue.autoACK,   // auto-ack
 		c.queue.exclusive, // exclusive
 		false,             // no-local
 		false,             // no-wait

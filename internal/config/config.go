@@ -47,6 +47,7 @@ type Config struct {
 			Durable    bool   `json:"durable" yaml:"durable"`
 			AutoDelete bool   `json:"autoDelete" yaml:"autoDelete"`
 			Exclusive  bool   `json:"exclusive" yaml:"exclusive"`
+			AutoACK    bool   `json:"autoACK" yaml:"autoACK"`
 			Args       args   `json:"args" yaml:"args"`
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {

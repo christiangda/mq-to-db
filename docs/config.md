@@ -38,6 +38,7 @@ consumer:
     durable: true
     autoDelete: true
     exclusive: false
+    autoACK: false
     args:
       x-message-ttl: 180000
   exchange:

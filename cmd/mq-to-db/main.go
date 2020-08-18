@@ -148,9 +148,12 @@ func main() {
 	// consumer.kind: rabbitmq
 	// consumer.port: 5672
 	// consumer.requestedHeartbeat: 25
+	// consumer.queue.autoACK: false
 	v.SetDefault("consumer.kind", "rabbitmq")
 	v.SetDefault("consumer.port", 5672)
 	v.SetDefault("consumer.requestedHeartbeat", "10s")
+	v.SetDefault("consumer.queue.exclusive", false)
+	v.SetDefault("consumer.queue.autoACK", false)
 
 	// Read config file
 	v.SetConfigType("yaml")
