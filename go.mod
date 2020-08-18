@@ -1,6 +1,6 @@
 module github.com/christiangda/mq-to-db
 
-go 1.14
+go 1.15
 
 require (
 	github.com/lib/pq v1.8.0
