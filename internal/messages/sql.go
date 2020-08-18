@@ -27,13 +27,13 @@ type SQL struct {
 	Response   string `json:"RESPONSE" yaml:"RESPONSE"`
 }
 
-func NewSQL(m consumer.Messages) *SQL {
+func NewSQL(m *consumer.Messages) (*SQL, error) {
 	out := &SQL{}
 	err := json.Unmarshal(m.Payload, &out)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return out
+	return out, nil
 }
 
 // ToJSON export the configuration in JSON format

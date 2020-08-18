@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,7 +11,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type rabbitMQConf struct {
+// Consumer is a RabbitMQ consumer configuration
+// Implement Consumer.Consumer interface
+type Consumer struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
@@ -40,7 +43,7 @@ type rabbitMQConf struct {
 // New create a new rabbitmq consumer
 func New(c *config.Config) (consumer.Consumer, error) {
 
-	return &rabbitMQConf{
+	return &Consumer{
 		address:            c.Consumer.Address,
 		port:               c.Consumer.Port,
 		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
@@ -79,7 +82,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 }
 
 // Connect to RabbitMQ server and channel
-func (c *rabbitMQConf) Connect() {
+func (c *Consumer) Connect() {
 
 	amqpConfig := amqp.Config{}
 
@@ -143,7 +146,7 @@ func (c *rabbitMQConf) Connect() {
 }
 
 // Consume messages from the channel
-func (c *rabbitMQConf) Consume() (<-chan consumer.Messages, error) {
+func (c *Consumer) Consume() (consumer.Iterator, error) {
 
 	msgs, err := c.channel.Consume(
 		c.queue.name,
@@ -158,38 +161,63 @@ func (c *rabbitMQConf) Consume() (<-chan consumer.Messages, error) {
 		return nil, err
 	}
 
-	out := make(chan consumer.Messages)
-
-	// the best way to consume a channel!
-	// go func() {
-	// 	for msg := range msgs {
-	// 		out <- queue.Messages{
-	// 			Payload: msg.Body,
-	// 			Length:  0,
-	// 		}
-	// 	}
-	// 	close(out)
-	// }()
-
-	for msg := range msgs {
-		out <- consumer.Messages{
-			ConsumerTag:     msg.ConsumerTag,
-			ContentEncoding: msg.ContentEncoding,
-			ContentType:     msg.ContentType,
-			MessageId:       msg.MessageId,
-			Timestamp:       msg.Timestamp,
-			Exchange:        msg.Exchange,
-			RoutingKey:      msg.RoutingKey,
-			Payload:         msg.Body,
-		}
-	}
-	close(out)
-
-	return out, nil
+	return &Iterator{messages: msgs, ch: c.channel, id: "1"}, nil
 }
 
 // Close the channel connection
-func (c *rabbitMQConf) Close() {
+func (c *Consumer) Close() {
 	c.channel.Close()
 	c.conn.Close()
+}
+
+// Iterator iterates over consumer messages
+// Implements Consumer.Iterator
+type Iterator struct {
+	id       string
+	ch       *amqp.Channel
+	messages <-chan amqp.Delivery
+}
+
+// Next returns the next message in the iterator.
+func (i *Iterator) Next() (*consumer.Messages, error) {
+	d, ok := <-i.messages
+	if !ok {
+		return nil, errors.New("Channel is closed")
+	}
+
+	m := &consumer.Messages{}
+	m.MessageId = d.MessageId
+	m.Priority = consumer.Priority(d.Priority)
+	m.Timestamp = d.Timestamp
+	m.ContentType = d.ContentType
+	m.Acknowledger = &Acknowledger{d.Acknowledger, d.DeliveryTag}
+	m.Payload = d.Body
+
+	return m, nil
+}
+
+// Close closes the channel of the Iterator.
+func (i *Iterator) Close() error {
+	if err := i.ch.Cancel(i.id, false); err != nil {
+		return err
+	}
+
+	return i.ch.Close()
+}
+
+// Acknowledger implements the Acknowledger for AMQP.
+type Acknowledger struct {
+	ack amqp.Acknowledger
+	id  uint64
+}
+
+// Ack signals acknowledgement.
+func (a *Acknowledger) Ack() error {
+	return a.ack.Ack(a.id, false)
+}
+
+// Reject signals rejection. If requeue is false, the job will go to the buried
+// queue until Queue.RepublishBuried() is called.
+func (a *Acknowledger) Reject(requeue bool) error {
+	return a.ack.Reject(a.id, requeue)
 }

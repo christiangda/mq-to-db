@@ -239,37 +239,32 @@ func main() {
 	// This channel is used to wait all go routines
 	done := make(chan bool, 1)
 
-	go func(done *chan bool) { // This go routine is to consume message
+	// Consume message
+	iter, err := qc.Consume() // Consumming messages from RabbitMQ channel
+	if err != nil {
+		log.Error(err)
+	}
 
-		msgs, err := qc.Consume() // Consumming messages from RabbitMQ channel
+	go func(done *chan bool) { // This go routine is to consume message from iterator
+
+		qcm, err := iter.Next()
 		if err != nil {
-			log.Error(err)
+			log.Errorf("Error iterating over consumer: %s", err)
 		}
 
-		for m := range msgs {
-
-			mt, err := messages.GetType(m)
-			if err != nil {
-				log.Error(err)
-			}
-
-			switch mt {
-			case "SQL":
-				pl := messages.NewSQL(m)
-				res, err := db.ExecContext(appCtx, pl.Content.Sentence)
-				if err != nil {
-					log.Errorf("Error storing SQL payload payload: %v", err)
-				}
-				log.Debugf("Result %s", res)
-
-			case "RAW":
-				log.Warnf("Unknow JSON payload %s", m.Payload)
-
-			default:
-				log.Warnf("Unknow payload %s", m.Payload)
-			}
-
+		sqlm, err := messages.NewSQL(qcm)
+		if err != nil {
+			log.Errorf("Error creating SQL Message: %s", err)
 		}
+
+		res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
+		if err != nil {
+			log.Errorf("Error storing SQL payload payload: %v", err)
+		}
+
+		log.Debugf("SQL message: %s", sqlm.ToJSON())
+		log.Debugf("DB Execution Result: %s", res)
+
 		// Notify main routine is done
 		*done <- true
 	}(&done)
