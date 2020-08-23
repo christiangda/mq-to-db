@@ -227,10 +227,10 @@ func main() {
 	// Application context
 	appCtx := context.Background()
 
-	// Try to connecto to Storage first, and if everithing is ready, then go for Consumer
+	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
-		log.Fatal("Error conecting to database")
+		log.Fatal("Error connecting to database")
 	}
 	defer db.Close() // is here for a moment
 
@@ -258,11 +258,22 @@ func main() {
 		sqlm, err := messages.NewSQL(qcm)
 		if err != nil {
 			log.Errorf("Error creating SQL Message: %s", err)
+			if err := qcm.Reject(true); err != nil {
+				log.Errorf("Error rejecting rabbitmq message: %v", err)
+			}
 		}
 
 		res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
 		if err != nil {
-			log.Errorf("Error storing SQL payload payload: %v", err)
+			log.Errorf("Error storing SQL payload: %v", err)
+
+			if err := qcm.Reject(true); err != nil {
+				log.Errorf("Error rejecting rabbitmq message: %v", err)
+			}
+		}
+
+		if err := qcm.Ack(); err != nil {
+			log.Errorf("Error executing ack on rabbitmq message: %v", err)
 		}
 
 		log.Debugf("SQL message: %s", sqlm.ToJSON())

@@ -17,11 +17,8 @@ type Consumer struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
-	address            string
-	port               int
+	uri                string
 	requestedHeartbeat time.Duration
-	username           string
-	password           string
 	virtualHost        string
 	queue              struct {
 		name       string
@@ -41,15 +38,14 @@ type Consumer struct {
 	}
 }
 
-// New create a new rabbitmq consumer
+// New create a new rabbitmq consumer with implements consumer.Consumer interface
 func New(c *config.Config) (consumer.Consumer, error) {
 
+	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", c.Consumer.Username, c.Consumer.Password, c.Consumer.Address, c.Consumer.Port)
+
 	return &Consumer{
-		address:            c.Consumer.Address,
-		port:               c.Consumer.Port,
+		uri:                uri,
 		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
-		username:           c.Consumer.Username,
-		password:           c.Consumer.Password,
 		virtualHost:        c.Consumer.VirtualHost,
 		queue: struct {
 			name       string
@@ -95,7 +91,7 @@ func (c *Consumer) Connect() {
 	}
 
 	conn, err := amqp.DialConfig(
-		fmt.Sprintf("amqp://%s:%s@%s:%d/", c.username, c.username, c.address, c.port),
+		c.uri,
 		amqpConfig,
 	)
 	if err != nil {
