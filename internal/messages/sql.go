@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// SQL is usedto unmalshall JSON Payload
+// SQL is used to Unmarshal JSON Payload
 type SQL struct {
 	Kind    string `json:"TYPE" yaml:"TYPE"`
 	Content struct {
@@ -27,6 +27,7 @@ type SQL struct {
 	Response   string `json:"RESPONSE" yaml:"RESPONSE"`
 }
 
+// NewSQL create a new SQL message type
 func NewSQL(m *consumer.Messages) (*SQL, error) {
 	out := &SQL{}
 	err := json.Unmarshal(m.Payload, &out)
@@ -36,7 +37,7 @@ func NewSQL(m *consumer.Messages) (*SQL, error) {
 	return out, nil
 }
 
-// ToJSON export the configuration in JSON format
+// ToJSON export the SQL in JSON format
 func (m *SQL) ToJSON() string {
 	out, err := json.Marshal(m)
 	if err != nil {
@@ -45,7 +46,7 @@ func (m *SQL) ToJSON() string {
 	return string(out)
 }
 
-// ToYAML export the configuration in YAML format
+// ToYAML export the SQL in YAML format
 func (m *SQL) ToYAML() string {
 	out, err := yaml.Marshal(m)
 	if err != nil {

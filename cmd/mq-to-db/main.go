@@ -93,6 +93,7 @@ func init() { //package initializer
 		fmt.Println(conf.Application.BuildInfo)
 		os.Exit(0)
 	}
+
 	// Use logrus for standard log output
 	// Note that `log` here references stdlib's log
 	// Not logrus imported under the name `log`.

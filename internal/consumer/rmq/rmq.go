@@ -9,6 +9,8 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
+
+	uuid "github.com/google/uuid"
 )
 
 // Consumer is a RabbitMQ consumer configuration
@@ -17,6 +19,7 @@ type Consumer struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
+	appName            string
 	uri                string
 	requestedHeartbeat time.Duration
 	virtualHost        string
@@ -44,6 +47,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", c.Consumer.Username, c.Consumer.Password, c.Consumer.Address, c.Consumer.Port)
 
 	return &Consumer{
+		appName:            c.Application.Name,
 		uri:                uri,
 		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
 		virtualHost:        c.Consumer.VirtualHost,
@@ -147,9 +151,11 @@ func (c *Consumer) Connect() {
 // Consume messages from the channel
 func (c *Consumer) Consume() (consumer.Iterator, error) {
 
+	id := c.newConsumerID()
+
 	msgs, err := c.channel.Consume(
 		c.queue.name,
-		"",                // consumer
+		id,                // consumer id
 		c.queue.autoACK,   // auto-ack
 		c.queue.exclusive, // exclusive
 		false,             // no-local
@@ -160,7 +166,12 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 		return nil, err
 	}
 
-	return &Iterator{messages: msgs, ch: c.channel, id: "1"}, nil
+	return &Iterator{messages: msgs, ch: c.channel, id: id}, nil
+}
+
+// newConsumerID generate a unique consumer id
+func (c *Consumer) newConsumerID() string {
+	return fmt.Sprintf("%s-%s-%d", c.appName, c.queue.name, uuid.New())
 }
 
 // Close the channel connection
