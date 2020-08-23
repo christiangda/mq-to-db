@@ -12,7 +12,7 @@ import (
 type Consumer interface {
 	Connect()
 	Consume() (Iterator, error)
-	Close()
+	Close() error
 }
 
 type Iterator interface {

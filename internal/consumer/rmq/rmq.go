@@ -169,15 +169,21 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 	return &Iterator{messages: msgs, ch: c.channel, id: id}, nil
 }
 
-// newConsumerID generate a unique consumer id
+// newConsumerID generate a unique consumer id compose
+// by '<application name>-<queue name>-<uuid>'
 func (c *Consumer) newConsumerID() string {
 	return fmt.Sprintf("%s-%s-%d", c.appName, c.queue.name, uuid.New())
 }
 
 // Close the channel connection
-func (c *Consumer) Close() {
-	c.channel.Close()
-	c.conn.Close()
+func (c *Consumer) Close() error {
+	if err := c.channel.Close(); err != nil {
+		return err
+	}
+	if err := c.conn.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Iterator iterates over consume messages

@@ -233,12 +233,10 @@ func main() {
 	if err := db.Connect(appCtx); err != nil {
 		log.Fatal("Error connecting to database")
 	}
-	defer db.Close() // is here for a moment
 
 	// Try to connect to queue consumer
 	log.Infof("Connecting to consumer")
 	qc.Connect()
-	defer qc.Close() // is here for a moment
 
 	// This channel is used to wait all go routines
 	done := make(chan bool, 1)
@@ -286,4 +284,9 @@ func main() {
 
 	// main routine blocked until others routines finished
 	<-done
+
+	// Closes sockets
+	qc.Close() // Consummer
+	db.Close() // Database
+
 }

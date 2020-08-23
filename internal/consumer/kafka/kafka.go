@@ -20,7 +20,7 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 	return &Iterator{messages: m, ch: &cm, id: "1"}, nil
 }
 
-func (c *Consumer) Close() {}
+func (c *Consumer) Close() error { return nil }
 
 // Iterator iterates over consumer messages
 // Implements Consumer.Iterator
