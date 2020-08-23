@@ -93,7 +93,7 @@ func (c *pgsqlConf) ExecContext(ctx context.Context, q string) (sql.Result, erro
 	res, err := c.pool.ExecContext(ctx, q)
 
 	if ctx.Err() == context.DeadlineExceeded {
-		log.Warnf("Query time out (%v) for query: %s", c.maxQueryTimeOut, q)
+		log.Warnf("Query time out (%v) for: %s", c.maxQueryTimeOut, q)
 		return nil, ctx.Err()
 	}
 

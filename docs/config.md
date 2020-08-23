@@ -60,7 +60,7 @@ database:
   database: postgres
   sslMode: disable
   maxPingTimeOut: 1s
-  maxQueryTimeOut: 30s
+  maxQueryTimeOut: 10s
   connMaxLifetime: 0
   maxIdleConns: 5
   maxOpenConns: 20

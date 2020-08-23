@@ -3,8 +3,6 @@ package messages
 import (
 	"encoding/json"
 
-	"github.com/christiangda/mq-to-db/internal/consumer"
-
 	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v3"
@@ -28,9 +26,9 @@ type SQL struct {
 }
 
 // NewSQL create a new SQL message type
-func NewSQL(m *consumer.Messages) (*SQL, error) {
+func NewSQL(m []byte) (*SQL, error) {
 	out := &SQL{}
-	err := json.Unmarshal(m.Payload, &out)
+	err := json.Unmarshal(m, &out)
 	if err != nil {
 		return nil, err
 	}

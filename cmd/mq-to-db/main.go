@@ -133,7 +133,7 @@ func main() {
 	// database.port: 5432
 	// database.sslMode: disable
 	// database.maxPingTimeOut: 1s
-	// database.maxQueryTimeOut: 30s
+	// database.maxQueryTimeOut: 10s
 	// database.connMaxLifetime: 0
 	// database.maxIdleConns: 5
 	// database.maxOpenConns: 20
@@ -141,15 +141,17 @@ func main() {
 	v.SetDefault("database.port", 5432)
 	v.SetDefault("database.sslMode", "disable")
 	v.SetDefault("Database.maxPingTimeOut", "1s")
-	v.SetDefault("Database.maxQueryTimeOut", "30s")
+	v.SetDefault("Database.maxQueryTimeOut", "10s")
 	v.SetDefault("Database.connMaxLifetime", 0)
 	v.SetDefault("Database.maxIdleConns", 5)
 	v.SetDefault("Database.maxIdleConns", 20)
 	// ***** RabbitMQ *****
+	// consumer.workers: 10
 	// consumer.kind: rabbitmq
 	// consumer.port: 5672
 	// consumer.requestedHeartbeat: 25
 	// consumer.queue.autoACK: false
+	v.SetDefault("consumer.workers", 10)
 	v.SetDefault("consumer.kind", "rabbitmq")
 	v.SetDefault("consumer.port", 5672)
 	v.SetDefault("consumer.requestedHeartbeat", "10s")
@@ -250,47 +252,46 @@ func main() {
 	go func(done *chan bool) { // This go routine is to consume message from iterator
 
 		for {
+			// start consuming message 1 by 1
 			qcm, err := iter.Next()
-
 			if err != nil {
 				log.Errorf("Error iterating over consumer: %s", err)
-				break
-			}
+			} else {
+				log.Debugf("Consumed message Payload: %s", qcm.Payload)
 
-			log.Debugf("Consumed message Payload: %s", qcm.Payload)
-			sqlm, err := messages.NewSQL(qcm)
-			if err != nil {
-				log.Errorf("Error creating SQL Message: %s", err)
+				// try to convert the message payload to a SQL message type
+				sqlm, err := messages.NewSQL(qcm.Payload)
+				if err != nil {
+					log.Errorf("Error creating SQL Message: %s", err)
 
-				if err := qcm.Reject(false); err != nil {
-					log.Errorf("Error rejecting rabbitmq message: %v", err)
+					if err := qcm.Reject(false); err != nil {
+						log.Errorf("Error rejecting rabbitmq message: %v", err)
+					}
+				} else {
+
+					res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
+					if err != nil {
+						log.Errorf("Error storing SQL payload: %v", err)
+
+						if err := qcm.Reject(false); err != nil {
+							log.Errorf("Error rejecting rabbitmq message: %v", err)
+						}
+					} else {
+
+						if err := qcm.Ack(); err != nil {
+							log.Errorf("Error executing ack on rabbitmq message: %v", err)
+						}
+
+						log.Debugf("SQL message: %s", sqlm.ToJSON())
+
+						r, err := res.RowsAffected()
+						if err != nil {
+							log.Errorf("Error getting SQL result id: %v", err)
+						}
+						log.Debugf("DB Execution Result: %v", r)
+					}
 				}
-				break
 			}
-
-			res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
-			if err != nil {
-				log.Errorf("Error storing SQL payload: %v", err)
-
-				if err := qcm.Reject(false); err != nil {
-					log.Errorf("Error rejecting rabbitmq message: %v", err)
-				}
-				break
-			}
-
-			if err := qcm.Ack(); err != nil {
-				log.Errorf("Error executing ack on rabbitmq message: %v", err)
-				break
-			}
-
-			log.Debugf("SQL message: %s", sqlm.ToJSON())
-
-			r, err := res.RowsAffected()
-			if err != nil {
-				log.Errorf("Error getting SQL result id: %v", err)
-				break
-			}
-			log.Debugf("DB Execution Result: %v", r)
 		}
 
 		// Notify to main routine that this routine done
