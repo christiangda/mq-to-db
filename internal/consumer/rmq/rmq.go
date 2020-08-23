@@ -169,7 +169,7 @@ func (c *Consumer) Close() {
 	c.conn.Close()
 }
 
-// Iterator iterates over consumer messages
+// Iterator iterates over consume messages
 // Implements Consumer.Iterator
 type Iterator struct {
 	id       string
@@ -185,7 +185,7 @@ func (i *Iterator) Next() (*consumer.Messages, error) {
 	}
 
 	m := &consumer.Messages{}
-	m.MessageId = d.MessageId
+	m.MessageID = d.MessageId
 	m.Priority = consumer.Priority(d.Priority)
 	m.Timestamp = d.Timestamp
 	m.ContentType = d.ContentType
@@ -204,7 +204,7 @@ func (i *Iterator) Close() error {
 	return i.ch.Close()
 }
 
-// Acknowledger implements the Acknowledger for AMQP.
+// Acknowledger implements the Acknowledger for AMQP library.
 type Acknowledger struct {
 	ack amqp.Acknowledger
 	id  uint64

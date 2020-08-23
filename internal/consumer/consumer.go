@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"errors"
 	"io"
 	"time"
 )
@@ -22,7 +23,7 @@ type Iterator interface {
 // Priority represents a priority level for message queue
 type Priority uint8
 
-// Acknowledger
+// Acknowledger represents the object in charge of acknowledgement
 type Acknowledger interface {
 	Ack() error
 	Reject(requeue bool) error
@@ -32,7 +33,7 @@ type Acknowledger interface {
 type Messages struct {
 	ContentType     string
 	ContentEncoding string
-	MessageId       string
+	MessageID       string
 	Priority        Priority
 	ConsumerTag     string
 	Timestamp       time.Time
@@ -40,4 +41,21 @@ type Messages struct {
 	RoutingKey      string
 	Payload         []byte
 	Acknowledger
+}
+
+// Ack is called when the job is finished.
+func (m *Messages) Ack() error {
+	if m.Acknowledger == nil {
+		return errors.New("Error acknowledging message: " + m.MessageID)
+	}
+	return m.Acknowledger.Ack()
+}
+
+// Reject is called when the job errors. The parameter is true if and only if the
+// job should be put back in the queue.
+func (m *Messages) Reject(requeue bool) error {
+	if m.Acknowledger == nil {
+		return errors.New("Error rejecting message: " + m.MessageID)
+	}
+	return m.Acknowledger.Reject(requeue)
 }

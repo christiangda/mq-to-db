@@ -258,7 +258,7 @@ func main() {
 		sqlm, err := messages.NewSQL(qcm)
 		if err != nil {
 			log.Errorf("Error creating SQL Message: %s", err)
-			if err := qcm.Reject(true); err != nil {
+			if err := qcm.Reject(false); err != nil {
 				log.Errorf("Error rejecting rabbitmq message: %v", err)
 			}
 		}
@@ -267,7 +267,7 @@ func main() {
 		if err != nil {
 			log.Errorf("Error storing SQL payload: %v", err)
 
-			if err := qcm.Reject(true); err != nil {
+			if err := qcm.Reject(false); err != nil {
 				log.Errorf("Error rejecting rabbitmq message: %v", err)
 			}
 		}
