@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -228,6 +229,8 @@ func main() {
 	}
 
 	// Application context
+	done := make(chan bool, 1)
+	var wg sync.WaitGroup
 	appCtx := context.Background()
 
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
@@ -240,63 +243,17 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	// This channel is used to wait all go routines
-	done := make(chan bool, 1)
-
 	// Consume message using iterator
 	iter, err := qc.Consume()
 	if err != nil {
 		log.Error(err)
 	}
 
-	go func(done *chan bool) { // This go routine is to consume message from iterator
-
-		for {
-			// start consuming message 1 by 1
-			qcm, err := iter.Next()
-			if err != nil {
-				log.Errorf("Error iterating over consumer: %s", err)
-			} else {
-				log.Debugf("Consumed message Payload: %s", qcm.Payload)
-
-				// try to convert the message payload to a SQL message type
-				sqlm, err := messages.NewSQL(qcm.Payload)
-				if err != nil {
-					log.Errorf("Error creating SQL Message: %s", err)
-
-					if err := qcm.Reject(false); err != nil {
-						log.Errorf("Error rejecting rabbitmq message: %v", err)
-					}
-				} else {
-
-					res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
-					if err != nil {
-						log.Errorf("Error storing SQL payload: %v", err)
-
-						if err := qcm.Reject(false); err != nil {
-							log.Errorf("Error rejecting rabbitmq message: %v", err)
-						}
-					} else {
-
-						if err := qcm.Ack(); err != nil {
-							log.Errorf("Error executing ack on rabbitmq message: %v", err)
-						}
-
-						log.Debugf("SQL message: %s", sqlm.ToJSON())
-
-						r, err := res.RowsAffected()
-						if err != nil {
-							log.Errorf("Error getting SQL result id: %v", err)
-						}
-						log.Debugf("DB Execution Result: %v", r)
-					}
-				}
-			}
-		}
-
-		// Notify to main routine that this routine done
-		*done <- true
-	}(&done)
+	// workers to proccess every consumed message
+	for i := 0; i < conf.Consumer.Workers; i++ {
+		wg.Add(1)
+		go worker(appCtx, i, iter, db, &wg, &done)
+	}
 
 	// main routine blocked until others routines finished
 	<-done
@@ -305,4 +262,55 @@ func main() {
 	qc.Close() // Consummer
 	db.Close() // Database
 
+}
+
+func worker(ctx context.Context, id int, iter consumer.Iterator, db storage.Store, wg *sync.WaitGroup, done *chan bool) {
+	defer wg.Done()
+
+	log.Debugf("Starting worker: %d", id)
+	for {
+		// start consuming message 1 by 1
+		qcm, err := iter.Next()
+		if err != nil {
+			log.Errorf("Worker: %d, Error iterating over consumer: %s", id, err)
+		} else {
+			log.Debugf("Worker: %d, Consumed message Payload: %s", id, qcm.Payload)
+
+			// try to convert the message payload to a SQL message type
+			sqlm, err := messages.NewSQL(qcm.Payload)
+			if err != nil {
+				log.Errorf("Worker: %d, Error creating SQL Message: %s", id, err)
+
+				if err := qcm.Reject(false); err != nil {
+					log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
+				}
+			} else {
+
+				res, err := db.ExecContext(ctx, sqlm.Content.Sentence)
+				if err != nil {
+					log.Errorf("Worker: %d, Error storing SQL payload: %v", id, err)
+
+					if err := qcm.Reject(false); err != nil {
+						log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
+					}
+				} else {
+
+					if err := qcm.Ack(); err != nil {
+						log.Errorf("Worker: %d, Error executing ack on rabbitmq message: %v", id, err)
+					}
+
+					log.Debugf("Worker: %d, SQL message: %s", id, sqlm.ToJSON())
+
+					r, err := res.RowsAffected()
+					if err != nil {
+						log.Errorf("Worker: %d, Error getting SQL result id: %v", id, err)
+					}
+					log.Debugf("Worker: %d, DB Execution Result: %v", id, r)
+				}
+			}
+		}
+	}
+
+	log.Debugf("Finishing worker: %d", id)
+	*done <- true
 }

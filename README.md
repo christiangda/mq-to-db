@@ -2,6 +2,10 @@
 
 Read from Message Queue System and Store into Database
 
+## Characteristics
+
+* The process (job) of consume one message from queue and store into the database is synchronous because every message needs to be acknowledge (confirm as storage).
+
 ## How to execute
 
 source code
