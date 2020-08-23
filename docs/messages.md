@@ -6,18 +6,18 @@ This is about the messages type received from the RabbitMQ channel
 
 ```json
 {
-	"TYPE":"SQL",
-	"CONTENT":{
-		   "SERVER":"bdserver4-local",
-		   "DB":"comite_librerias",
-		   "USER":"usuario",
-		   "PASS":"clave",
-		   "SENTENCE":"INSERT INTO prueba(columna)VALUES('TEST')"
-	},
-	"DATE":"2016-03-16 00:36:01.051722-04:30",
-	"APPID":"EJEMPLOS_PRACTICOS",
-	"ADITIONAL":null,
-	"ACK": false,
-	"RESPONSE":null
+    "TYPE":"SQL",
+    "CONTENT":{
+        "SERVER":"localhost",
+         "DB":"postgresql",
+         "USER":"postgres",
+         "PASS":"mysecretpassword",
+         "SENTENCE":"SELECT pg_sleep(1.5);"
+    },
+    "DATE":"2020-01-01 00:00:01.000000-1",
+    "APPID":"test",
+    "ADITIONAL":null,
+    "ACK": false,
+    "RESPONSE":null
 }
 ```

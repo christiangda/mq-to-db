@@ -25,6 +25,7 @@ The config file [config-sample.yaml](/config-sample.yaml) could be used as templ
 ```yaml
 ---
 consumer:
+  workers: 2                  # Number of go routines consuming messages from Queue
   kind: rabbitmq
   address: 127.0.0.1
   port: 5672

@@ -29,6 +29,12 @@ RabbitMQ
 docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
 
+__NOTE:__  
+
+* RabbitMQ web console: [http://localhost:15672](http://localhost:15672)
+* Username: guest
+* Password: guest
+
 PostgreSQL
 
 ```bash
@@ -45,6 +51,13 @@ mq-to-db
 
 ```bash
 go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
+```
+
+o
+
+```bash
+make
+./mq-to-db --configFile config-sample.yaml
 ```
 
 ## How to build
@@ -122,3 +135,9 @@ go build \
 
 * [https://blog.alexellis.io/inject-build-time-vars-golang/](https://blog.alexellis.io/inject-build-time-vars-golang/)
 * [https://goenning.net/2017/01/25/adding-custom-data-go-binaries-compile-time/](https://goenning.net/2017/01/25/adding-custom-data-go-binaries-compile-time/)
+
+### Iterators
+
+* [https://ewencp.org/blog/golang-iterators/](https://ewencp.org/blog/golang-iterators/)
+* [https://pkg.go.dev/google.golang.org/api/iterator?tab=doc#example-package-ServerPages](https://pkg.go.dev/google.golang.org/api/iterator?tab=doc#example-package-ServerPages)
+* [https://github.com/googleapis/google-cloud-go/wiki/Iterator-Guidelines](https://github.com/googleapis/google-cloud-go/wiki/Iterator-Guidelines)

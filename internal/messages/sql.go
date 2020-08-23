@@ -23,7 +23,7 @@ type SQL struct {
 	Date       string `json:"DATE" yaml:"DATE"`
 	AppID      string `json:"APPID" yaml:"APPID"`
 	Additional string `json:"ADITIONAL" yaml:"ADITIONAL"`
-	ACK        string `json:"ACK" yaml:"ACK"`
+	ACK        bool   `json:"ACK" yaml:"ACK"`
 	Response   string `json:"RESPONSE" yaml:"RESPONSE"`
 }
 

@@ -172,7 +172,7 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 // newConsumerID generate a unique consumer id compose
 // by '<application name>-<queue name>-<uuid>'
 func (c *Consumer) newConsumerID() string {
-	return fmt.Sprintf("%s-%s-%d", c.appName, c.queue.name, uuid.New())
+	return fmt.Sprintf("%s-%s-%s", c.appName, c.queue.name, uuid.New().String())
 }
 
 // Close the channel connection
@@ -196,6 +196,7 @@ type Iterator struct {
 
 // Next returns the next message in the iterator.
 func (i *Iterator) Next() (*consumer.Messages, error) {
+
 	d, ok := <-i.messages
 	if !ok {
 		return nil, errors.New("Channel is closed")

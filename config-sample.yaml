@@ -1,12 +1,13 @@
 ---
 consumer:
+  workers: 2
   kind: rabbitmq
   address: 127.0.0.1
   port: 5672
   requestedHeartbeat: 25s
   username: guest
   password: guest
-  virtualHost: my.virtualhost
+  # virtualHost: my.virtualhost # optional
   queue:
     name: my.queue
     routingKey: my.routeKey
@@ -22,8 +23,6 @@ consumer:
     type: topic
     durable: true
     autoDelete: false
-    args:
-      alternate-exchange: my.ae
 
 database:
   kind: postgresql

@@ -241,44 +241,59 @@ func main() {
 	// This channel is used to wait all go routines
 	done := make(chan bool, 1)
 
-	// Consume message
-	iter, err := qc.Consume() // Consumming messages from RabbitMQ channel
+	// Consume message using iterator
+	iter, err := qc.Consume()
 	if err != nil {
 		log.Error(err)
 	}
 
 	go func(done *chan bool) { // This go routine is to consume message from iterator
 
-		qcm, err := iter.Next()
-		if err != nil {
-			log.Errorf("Error iterating over consumer: %s", err)
-		}
+		for {
+			qcm, err := iter.Next()
 
-		sqlm, err := messages.NewSQL(qcm)
-		if err != nil {
-			log.Errorf("Error creating SQL Message: %s", err)
-			if err := qcm.Reject(false); err != nil {
-				log.Errorf("Error rejecting rabbitmq message: %v", err)
+			if err != nil {
+				log.Errorf("Error iterating over consumer: %s", err)
+				break
 			}
-		}
 
-		res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
-		if err != nil {
-			log.Errorf("Error storing SQL payload: %v", err)
+			log.Debugf("Consumed message Payload: %s", qcm.Payload)
+			sqlm, err := messages.NewSQL(qcm)
+			if err != nil {
+				log.Errorf("Error creating SQL Message: %s", err)
 
-			if err := qcm.Reject(false); err != nil {
-				log.Errorf("Error rejecting rabbitmq message: %v", err)
+				if err := qcm.Reject(false); err != nil {
+					log.Errorf("Error rejecting rabbitmq message: %v", err)
+				}
+				break
 			}
+
+			res, err := db.ExecContext(appCtx, sqlm.Content.Sentence)
+			if err != nil {
+				log.Errorf("Error storing SQL payload: %v", err)
+
+				if err := qcm.Reject(false); err != nil {
+					log.Errorf("Error rejecting rabbitmq message: %v", err)
+				}
+				break
+			}
+
+			if err := qcm.Ack(); err != nil {
+				log.Errorf("Error executing ack on rabbitmq message: %v", err)
+				break
+			}
+
+			log.Debugf("SQL message: %s", sqlm.ToJSON())
+
+			r, err := res.RowsAffected()
+			if err != nil {
+				log.Errorf("Error getting SQL result id: %v", err)
+				break
+			}
+			log.Debugf("DB Execution Result: %v", r)
 		}
 
-		if err := qcm.Ack(); err != nil {
-			log.Errorf("Error executing ack on rabbitmq message: %v", err)
-		}
-
-		log.Debugf("SQL message: %s", sqlm.ToJSON())
-		log.Debugf("DB Execution Result: %s", res)
-
-		// Notify main routine is done
+		// Notify to main routine that this routine done
 		*done <- true
 	}(&done)
 

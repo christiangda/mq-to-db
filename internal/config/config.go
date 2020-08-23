@@ -34,6 +34,7 @@ type Config struct {
 	}
 
 	Consumer struct {
+		Workers            int           `json:"workers" yaml:"workers"`
 		Kind               string        `json:"kind" yaml:"kind"`
 		Address            string        `json:"address" yaml:"address"`
 		Port               int           `json:"port" yaml:"port"`

@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"errors"
-	"io"
 	"time"
 )
 
@@ -20,7 +19,7 @@ type Consumer interface {
 // Iterator define functionality to iterate over messages
 type Iterator interface {
 	Next() (*Messages, error)
-	io.Closer
+	Close() error
 }
 
 // Priority represents a priority level for message queue
