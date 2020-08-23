@@ -7,6 +7,8 @@ import (
 )
 
 // This package is an abstraction layer for queue consumers
+// any kind of consumer could implements interfaces here
+// additionally could be used to create tests stubs
 
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {
@@ -15,6 +17,7 @@ type Consumer interface {
 	Close() error
 }
 
+// Iterator define functionality to iterate over messages
 type Iterator interface {
 	Next() (*Messages, error)
 	io.Closer

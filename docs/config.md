@@ -31,7 +31,7 @@ consumer:
   requestedHeartbeat: 25s
   username: guest
   password: guest
-  # virtualHost: myvirtualhost # Optional
+  virtualHost: my.virtualhost # Optional
   queue:
     name: my.queue
     routingKey: my.routeKey
@@ -39,15 +39,16 @@ consumer:
     autoDelete: true
     exclusive: false
     autoACK: false
-    args:
+    args:                    # Optional
       x-message-ttl: 180000
+      x-dead-letter-exchange: retry.exchange
   exchange:
-    name: myexchage
+    name: my.exchage
     type: topic
     durable: true
     autoDelete: false
-    args:
-      x-dead-letter-exchange: my.dead_letter
+    args:                    # Optional
+      alternate-exchange: my.ae
 
 database:
   kind: postgresql

@@ -84,7 +84,6 @@ go build \
 * https://www.alexedwards.net/blog/interfaces-explained
 * https://golang.org/doc/effective_go.html#interfaces_and_types
 
-
 ### Context
 
 * [https://www.sohamkamani.com/golang/2018-06-17-golang-using-context-cancellation/](https://www.sohamkamani.com/golang/2018-06-17-golang-using-context-cancellation/)
@@ -101,8 +100,11 @@ go build \
 
 ### RabbitMQ
 
-*  [https://www.rabbitmq.com/tutorials/tutorial-one-go.html](https://www.rabbitmq.com/tutorials/tutorial-one-go.html)
-*  [http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang](http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang)
+* [https://www.rabbitmq.com/queues.html#optional-arguments](https://www.rabbitmq.com/queues.html#optional-arguments)
+* [https://www.rabbitmq.com/dlx.html](https://www.rabbitmq.com/dlx.html)
+* [https://www.rabbitmq.com/vhosts.html](https://www.rabbitmq.com/vhosts.html)
+* [https://www.rabbitmq.com/tutorials/tutorial-one-go.html](https://www.rabbitmq.com/tutorials/tutorial-one-go.html)
+* [http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang](http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang)
 
 ### Logs
 
