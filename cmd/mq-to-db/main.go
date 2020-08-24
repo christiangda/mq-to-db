@@ -248,18 +248,17 @@ func main() {
 	// workers to proccess every consumed message
 	for id := 1; id <= conf.Consumer.Workers; id++ {
 
+		// creates a worker id
+		wid := fmt.Sprintf("%s-w-%d", conf.Application.Name, id)
+
 		// Add control for new worker routine
 		wg.Add(1)
-
-		wid := fmt.Sprintf("%s-worker-%d", conf.Application.Name, id)
 
 		// Create a worker
 		w := consumer.NewWorker(appCtx, &wg, wid, db)
 
 		// Start a go routine
 		go w.Start(qc.Consume(wid))
-
-		//go worker(appCtx, id, iter, db, &wg)
 	}
 
 	// Here the function main is blocked
@@ -287,65 +286,6 @@ func main() {
 	}
 	log.Info("Database connections closed")
 }
-
-// func worker(ctx context.Context, id int, iter consumer.Iterator, db storage.Store, wg *sync.WaitGroup) {
-// 	defer wg.Done()
-
-// 	log.Infof("Starting worker: %d", id)
-// 	defer log.Infof("Finishing worker: %d", id)
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			log.Infof("Worker: %v, Application context cancel() received", id)
-// 			log.Infof("Worker: %v, Stoping worker", id)
-
-// 			return // avoid leaking of this goroutine when ctx is done.
-// 		default:
-
-// 			// start consuming message 1 by 1
-// 			qcm, err := iter.Next()
-// 			if err != nil {
-// 				log.Errorf("Worker: %d, Error iterating over consumer: %s", id, err)
-// 			} else {
-// 				log.Debugf("Worker: %d, Consumed message Payload: %s", id, qcm.Payload)
-
-// 				// try to convert the message payload to a SQL message type
-// 				sqlm, err := messages.NewSQL(qcm.Payload)
-// 				if err != nil {
-// 					log.Errorf("Worker: %d, Error creating SQL Message: %s", id, err)
-
-// 					if err := qcm.Reject(false); err != nil {
-// 						log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
-// 					}
-// 				} else {
-
-// 					res, err := db.ExecContext(ctx, sqlm.Content.Sentence)
-// 					if err != nil {
-// 						log.Errorf("Worker: %d, Error storing SQL payload: %v", id, err)
-
-// 						if err := qcm.Reject(false); err != nil {
-// 							log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
-// 						}
-// 					} else {
-
-// 						if err := qcm.Ack(); err != nil {
-// 							log.Errorf("Worker: %d, Error executing ack on rabbitmq message: %v", id, err)
-// 						}
-
-// 						log.Debugf("Worker: %d, SQL message: %s", id, sqlm.ToJSON())
-
-// 						r, err := res.RowsAffected()
-// 						if err != nil {
-// 							log.Errorf("Worker: %d, Error getting SQL result id: %v", id, err)
-// 						}
-// 						log.Debugf("Worker: %d, DB Execution Result: %v", id, r)
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// }
 
 // ListenOSSignals is a functions that
 // start a go routine to listen Operating System Signals
