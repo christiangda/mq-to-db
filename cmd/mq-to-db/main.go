@@ -245,12 +245,6 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	// Consume message using iterator
-	iter, err := qc.Consume()
-	if err != nil {
-		log.Error(err)
-	}
-
 	// workers to proccess every consumed message
 	for id := 0; id < conf.Consumer.Workers; id++ {
 
@@ -259,15 +253,14 @@ func main() {
 
 		// Create a worker
 		w := consumer.Worker{
-			ID:   id,
-			Iter: iter,
-			DB:   db,
-			WG:   &wg,
-			CTX:  appCtx,
+			ID:  id,
+			DB:  db,
+			WG:  &wg,
+			CTX: appCtx,
 		}
 
 		// Start a go routine
-		go w.Start()
+		go w.Start(qc.Consume())
 
 		//go worker(appCtx, id, iter, db, &wg)
 	}

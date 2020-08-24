@@ -149,10 +149,11 @@ func (c *Consumer) Connect() {
 }
 
 // Consume messages from the channel
-func (c *Consumer) Consume() (consumer.Iterator, error) {
+func (c *Consumer) Consume() (<-chan consumer.Messages, error) {
 
 	id := c.newConsumerID()
 
+	// this is a blocking operation because you are consuming a channel
 	msgs, err := c.channel.Consume(
 		c.queue.name,
 		id,                // consumer id
@@ -166,7 +167,24 @@ func (c *Consumer) Consume() (consumer.Iterator, error) {
 		return nil, err
 	}
 
-	return &Iterator{messages: msgs, ch: c.channel, id: id}, nil
+	out := make(chan consumer.Messages)
+
+	go func() {
+		for d := range msgs {
+			out <- consumer.Messages{
+				MessageID:    d.MessageId,
+				Priority:     consumer.Priority(d.Priority),
+				Timestamp:    d.Timestamp,
+				ContentType:  d.ContentType,
+				Acknowledger: &Acknowledger{d.Acknowledger, d.DeliveryTag},
+				Payload:      d.Body,
+			}
+		}
+		close(out)
+	}()
+
+	return out, nil
+	//return &Iterator{messages: msgs, ch: c.channel, id: id}, nil
 }
 
 // newConsumerID generate a unique consumer id compose

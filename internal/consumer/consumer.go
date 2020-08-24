@@ -18,7 +18,7 @@ import (
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {
 	Connect()
-	Consume() (Iterator, error)
+	Consume() (<-chan Messages, error)
 	Close() error
 }
 
@@ -71,31 +71,33 @@ func (m *Messages) Reject(requeue bool) error {
 // Worker is a job processor witch imply consume a message
 // from queue and store this into the Database
 type Worker struct {
-	ID   int
-	Iter Iterator
-	DB   storage.Store
-	WG   *sync.WaitGroup
-	CTX  context.Context
+	ID  int
+	DB  storage.Store
+	WG  *sync.WaitGroup
+	CTX context.Context
 }
 
 // Start a worker
-func (w *Worker) Start() {
+func (w *Worker) Start(msgs <-chan Messages, err error) {
+
+	if err != nil {
+		log.Errorf("Worker: %v, Error iterating over consumer: %s", w.ID, err)
+		return
+	}
+
 	defer w.WG.Done()
 	log.Infof("Worker: %v, Starting worker", w.ID)
 
-	go func() {
-		<-w.CTX.Done()
-		w.Iter.Close()
-	}()
-
 	for {
-		// make the job of consume messages
-		// start consuming message 1 by 1
-		qcm, err := w.Iter.Next()
-		if err != nil {
-			log.Errorf("Worker: %v, Error iterating over consumer: %s", w.ID, err)
-			return
-		} else {
+		select {
+
+		case <-w.CTX.Done():
+			log.Infof("Worker: %v, Application context cancel() received", w.ID)
+			log.Infof("Worker: %v, Stoping worker", w.ID)
+			return // avoid leaking of this goroutine when ctx is done.
+
+		case qcm := <-msgs:
+
 			log.Infof("Worker: %v, Consumed message Payload: %s", w.ID, qcm.Payload)
 
 			// try to convert the message payload to a SQL message type
@@ -129,8 +131,8 @@ func (w *Worker) Start() {
 					}
 					log.Debugf("Worker: %v, DB Execution Result: %v", w.ID, r)
 				}
+
 			}
 		}
-
 	}
 }

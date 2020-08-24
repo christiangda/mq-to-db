@@ -14,10 +14,11 @@ func New(c *config.Config) (consumer.Consumer, error) {
 
 func (c *Consumer) Connect() {}
 
-func (c *Consumer) Consume() (consumer.Iterator, error) {
-	cm := "this is a channel"
-	m := make(<-chan string)
-	return &Iterator{messages: m, ch: &cm, id: "1"}, nil
+func (c *Consumer) Consume() (<-chan consumer.Messages, error) {
+	//cm := "this is a channel"
+	m := make(<-chan consumer.Messages)
+	return m, nil
+	//return &Iterator{messages: m, ch: &cm, id: "1"}, nil
 }
 
 func (c *Consumer) Close() error { return nil }
