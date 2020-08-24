@@ -254,12 +254,7 @@ func main() {
 		wid := fmt.Sprintf("%s-worker-%d", conf.Application.Name, id)
 
 		// Create a worker
-		w := consumer.Worker{
-			ID:  wid,
-			DB:  db,
-			WG:  &wg,
-			CTX: appCtx,
-		}
+		w := consumer.NewWorker(appCtx, &wg, wid, db)
 
 		// Start a go routine
 		go w.Start(qc.Consume(wid))
