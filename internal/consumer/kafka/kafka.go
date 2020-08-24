@@ -14,7 +14,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 
 func (c *Consumer) Connect() {}
 
-func (c *Consumer) Consume() (<-chan consumer.Messages, error) {
+func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 	//cm := "this is a channel"
 	m := make(<-chan consumer.Messages)
 	return m, nil

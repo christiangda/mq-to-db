@@ -18,7 +18,7 @@ import (
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {
 	Connect()
-	Consume() (<-chan Messages, error)
+	Consume(id string) (<-chan Messages, error)
 	Close() error
 }
 
@@ -71,7 +71,7 @@ func (m *Messages) Reject(requeue bool) error {
 // Worker is a job processor witch imply consume a message
 // from queue and store this into the Database
 type Worker struct {
-	ID  int
+	ID  string
 	DB  storage.Store
 	WG  *sync.WaitGroup
 	CTX context.Context

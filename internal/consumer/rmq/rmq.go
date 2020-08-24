@@ -149,9 +149,11 @@ func (c *Consumer) Connect() {
 }
 
 // Consume messages from the channel
-func (c *Consumer) Consume() (<-chan consumer.Messages, error) {
+func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 
-	id := c.newConsumerID()
+	if id == "" {
+		id = c.newConsumerID()
+	}
 
 	// this is a blocking operation because you are consuming a channel
 	msgs, err := c.channel.Consume(

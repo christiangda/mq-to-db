@@ -246,21 +246,23 @@ func main() {
 	qc.Connect()
 
 	// workers to proccess every consumed message
-	for id := 0; id < conf.Consumer.Workers; id++ {
+	for id := 1; id <= conf.Consumer.Workers; id++ {
 
 		// Add control for new worker routine
 		wg.Add(1)
 
+		wid := fmt.Sprintf("%s-worker-%d", conf.Application.Name, id)
+
 		// Create a worker
 		w := consumer.Worker{
-			ID:  id,
+			ID:  wid,
 			DB:  db,
 			WG:  &wg,
 			CTX: appCtx,
 		}
 
 		// Start a go routine
-		go w.Start(qc.Consume())
+		go w.Start(qc.Consume(wid))
 
 		//go worker(appCtx, id, iter, db, &wg)
 	}
