@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
-
-	"github.com/christiangda/mq-to-db/internal/messages"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
@@ -187,11 +187,18 @@ func main() {
 
 	log.Debugf("Application configuration: %s", conf.ToJSON())
 
+	osSignal := make(chan bool, 1) // this channels will be used to listen OS signals, like ^c
+	ListenOSSignals(&osSignal)     // this function as soon as receive an Operating System signals, put value in chan done
+
+	var wg sync.WaitGroup
+	appCtx := context.Background()
+	appCtx, cancel := context.WithCancel(appCtx)
+
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
 	var qc consumer.Consumer
-	var err error // Necessary to handle errors inside switch/case
 
+	var err error // Necessary to handle errors inside switch/case
 	// Select the storage
 	switch conf.Database.Kind {
 	case "memory":
@@ -228,11 +235,6 @@ func main() {
 		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
 	}
 
-	// Application context
-	done := make(chan bool, 1)
-	var wg sync.WaitGroup
-	appCtx := context.Background()
-
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
@@ -250,67 +252,128 @@ func main() {
 	}
 
 	// workers to proccess every consumed message
-	for i := 0; i < conf.Consumer.Workers; i++ {
+	for id := 0; id < conf.Consumer.Workers; id++ {
+
+		// Add control for new worker routine
 		wg.Add(1)
-		go worker(appCtx, i, iter, db, &wg, &done)
+
+		// Create a worker
+		w := consumer.Worker{
+			ID:   id,
+			Iter: iter,
+			DB:   db,
+			WG:   &wg,
+			CTX:  appCtx,
+		}
+
+		// Start a go routine
+		go w.Start()
+
+		//go worker(appCtx, id, iter, db, &wg)
 	}
 
-	// main routine blocked until others routines finished
-	<-done
+	// Here the function main is blocked
+	// This is blocking the func main() routine until chan osSignal receive a value inside
+	<-osSignal
+	log.Warn("Stoping workers...")
+
+	// call context cancellation
+	cancel()
+
+	// This is waiting until all the workers finished
+	wg.Wait()
+	log.Info("Workers stopped")
 
 	// Closes sockets
-	qc.Close() // Consummer
-	db.Close() // Database
+	log.Info("Closing Consumer connections")
+	if err := qc.Close(); err != nil {
+		log.Error(err)
+	}
+	log.Info("Consumer connections closed")
 
+	log.Info("Closing Database connections")
+	if err := db.Close(); err != nil {
+		log.Error(err)
+	}
+	log.Info("Database connections closed")
 }
 
-func worker(ctx context.Context, id int, iter consumer.Iterator, db storage.Store, wg *sync.WaitGroup, done *chan bool) {
-	defer wg.Done()
+// func worker(ctx context.Context, id int, iter consumer.Iterator, db storage.Store, wg *sync.WaitGroup) {
+// 	defer wg.Done()
 
-	log.Debugf("Starting worker: %d", id)
-	for {
-		// start consuming message 1 by 1
-		qcm, err := iter.Next()
-		if err != nil {
-			log.Errorf("Worker: %d, Error iterating over consumer: %s", id, err)
-		} else {
-			log.Debugf("Worker: %d, Consumed message Payload: %s", id, qcm.Payload)
+// 	log.Infof("Starting worker: %d", id)
+// 	defer log.Infof("Finishing worker: %d", id)
 
-			// try to convert the message payload to a SQL message type
-			sqlm, err := messages.NewSQL(qcm.Payload)
-			if err != nil {
-				log.Errorf("Worker: %d, Error creating SQL Message: %s", id, err)
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			log.Infof("Worker: %v, Application context cancel() received", id)
+// 			log.Infof("Worker: %v, Stoping worker", id)
 
-				if err := qcm.Reject(false); err != nil {
-					log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
-				}
-			} else {
+// 			return // avoid leaking of this goroutine when ctx is done.
+// 		default:
 
-				res, err := db.ExecContext(ctx, sqlm.Content.Sentence)
-				if err != nil {
-					log.Errorf("Worker: %d, Error storing SQL payload: %v", id, err)
+// 			// start consuming message 1 by 1
+// 			qcm, err := iter.Next()
+// 			if err != nil {
+// 				log.Errorf("Worker: %d, Error iterating over consumer: %s", id, err)
+// 			} else {
+// 				log.Debugf("Worker: %d, Consumed message Payload: %s", id, qcm.Payload)
 
-					if err := qcm.Reject(false); err != nil {
-						log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
-					}
-				} else {
+// 				// try to convert the message payload to a SQL message type
+// 				sqlm, err := messages.NewSQL(qcm.Payload)
+// 				if err != nil {
+// 					log.Errorf("Worker: %d, Error creating SQL Message: %s", id, err)
 
-					if err := qcm.Ack(); err != nil {
-						log.Errorf("Worker: %d, Error executing ack on rabbitmq message: %v", id, err)
-					}
+// 					if err := qcm.Reject(false); err != nil {
+// 						log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
+// 					}
+// 				} else {
 
-					log.Debugf("Worker: %d, SQL message: %s", id, sqlm.ToJSON())
+// 					res, err := db.ExecContext(ctx, sqlm.Content.Sentence)
+// 					if err != nil {
+// 						log.Errorf("Worker: %d, Error storing SQL payload: %v", id, err)
 
-					r, err := res.RowsAffected()
-					if err != nil {
-						log.Errorf("Worker: %d, Error getting SQL result id: %v", id, err)
-					}
-					log.Debugf("Worker: %d, DB Execution Result: %v", id, r)
-				}
-			}
-		}
-	}
+// 						if err := qcm.Reject(false); err != nil {
+// 							log.Errorf("Worker: %d, Error rejecting rabbitmq message: %v", id, err)
+// 						}
+// 					} else {
 
-	log.Debugf("Finishing worker: %d", id)
-	*done <- true
+// 						if err := qcm.Ack(); err != nil {
+// 							log.Errorf("Worker: %d, Error executing ack on rabbitmq message: %v", id, err)
+// 						}
+
+// 						log.Debugf("Worker: %d, SQL message: %s", id, sqlm.ToJSON())
+
+// 						r, err := res.RowsAffected()
+// 						if err != nil {
+// 							log.Errorf("Worker: %d, Error getting SQL result id: %v", id, err)
+// 						}
+// 						log.Debugf("Worker: %d, DB Execution Result: %v", id, r)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
+// ListenOSSignals is a functions that
+// start a go routine to listen Operating System Signals
+// When some signals are received, it put a value inside channel done
+// to notify main routine to close
+func ListenOSSignals(osSignal *chan bool) {
+	go func(osSignal *chan bool) {
+		osSignals := make(chan os.Signal, 1)
+		signal.Notify(osSignals, os.Interrupt)
+		signal.Notify(osSignals, syscall.SIGTERM)
+		signal.Notify(osSignals, syscall.SIGINT)
+		signal.Notify(osSignals, syscall.SIGQUIT)
+
+		log.Info("listening Operating System signals")
+		sig := <-osSignals
+		log.Warnf("Received signal %s from Operating System", sig)
+
+		// Notify main routine shutdown is done
+		*osSignal <- true
+	}(osSignal)
 }
