@@ -101,7 +101,7 @@ func (w *Worker) Start(msgs <-chan Messages, err error) {
 	for {
 		select {
 
-		case <-w.ctx.Done():
+		case <-w.ctx.Done(): // Received application context cancellation
 			log.Infof("Worker: %v, Application context cancel() received", w.id)
 			log.Infof("Worker: %v, Stoping worker", w.id)
 			return // avoid leaking of this goroutine when ctx is done.

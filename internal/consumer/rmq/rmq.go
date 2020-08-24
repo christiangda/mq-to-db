@@ -192,7 +192,7 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 // newConsumerID generate a unique consumer id compose
 // by '<application name>-<queue name>-<uuid>'
 func (c *Consumer) newConsumerID() string {
-	return fmt.Sprintf("%s-%s-%s", c.appName, c.queue.name, uuid.New().String())
+	return fmt.Sprintf("%s-w-%s", c.appName, uuid.New().String())
 }
 
 // Close the channel connection
