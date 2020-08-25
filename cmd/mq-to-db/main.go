@@ -306,42 +306,45 @@ func ListenOSSignals(osSignal *chan bool) {
 	}(osSignal)
 }
 
+// This function return nothing because is a messages parser flow generate some errors
+// we reject the messages
 func proccessMessages(ctx context.Context, m consumer.Messages, st storage.Store) {
 
-	log.Infof("Processing message: %s", m.Payload)
+	log.Debugf("Processing message: %s", m.Payload)
 
-	// try to convert the message payload to a SQL message type
 	sqlm, err := messages.NewSQL(m.Payload)
 	if err != nil {
-		log.Errorf("Error creating SQL Message: %s", err)
+		log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
 
 		if err := m.Reject(false); err != nil {
-			log.Errorf("Error rejecting rabbitmq message: %v", err)
+			log.Errorf("Error rejecting message: %v", err)
 		}
 	} else {
+		// we use else sentences because we cannot broke the flow of execution (only logs), so
+		// sqlm if fine here.
 
-		res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
+		log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
+
+		// The result isn't used
+		_, err := st.ExecContext(ctx, sqlm.Content.Sentence)
 		if err != nil {
-			log.Errorf("Error storing SQL payload: %v", err)
+			log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
 
 			if err := m.Reject(false); err != nil {
-				log.Errorf("Error rejecting rabbitmq message: %v", err)
+				log.Errorf("Error rejecting message: %v", err)
 			}
 		} else {
+			// we use else sentences because we cannot broke the flow of execution (only logs), so
+			// ExecContext was fine
 
+			log.Debugf("Ack the message: %s", sqlm.ToJSON())
 			if err := m.Ack(); err != nil {
-				log.Errorf("Error executing ack on rabbitmq message: %v", err)
-			}
+				log.Errorf("Error ack on message: %v, the message will be rejected", err)
 
-			log.Debugf("SQL message: %s", sqlm.ToJSON())
-
-			r, err := res.RowsAffected()
-			if err != nil {
-				log.Errorf("Error getting SQL result id: %v", err)
+				if err := m.Reject(false); err != nil {
+					log.Errorf("Error rejecting message: %v", err)
+				}
 			}
-			log.Debugf("DB Execution Result: %v", r)
 		}
-
 	}
-	m.Ack()
 }

@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type consumerFuncCh chan func(id string) (<-chan consumer.Messages, error)
+
 // Pool is a worker group that runs a number of tasks at a
 // configured concurrency.
 type Pool struct {
