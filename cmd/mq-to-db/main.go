@@ -192,8 +192,7 @@ func main() {
 	ListenOSSignals(&osSignal)     // this function as soon as receive an Operating System signals, put value in chan done
 
 	appCtx := context.Background()
-	//appCtx, cancel := context.WithCancel(appCtx)
-	appCtx, cancel := context.WithTimeout(appCtx, conf.Server.ShutdownTimeout)
+	appCtx, cancel := context.WithCancel(appCtx)
 
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
@@ -247,11 +246,6 @@ func main() {
 	qc.Connect()
 
 	log.Print("Get consuming channel")
-	// left blank string, the function assign automatic consumer id
-	msgs, err := qc.Consume("")
-	if err != nil {
-		log.Error(err)
-	}
 
 	// log.Print("Consuming messages one by one")
 	// go func() {
@@ -280,7 +274,7 @@ func main() {
 			log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
 
 			// The result isn't used
-			_, err := st.ExecContext(ctx, sqlm.Content.Sentence)
+			res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
 			if err != nil {
 				log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
 
@@ -290,6 +284,12 @@ func main() {
 			} else {
 				// we use else sentences because we cannot broke the flow of execution (only logs), so
 				// ExecContext was fine
+
+				val, err := res.RowsAffected()
+				if err != nil {
+					log.Error(err)
+				}
+				log.Debugf("SQL Execution return: %v", val)
 
 				log.Debugf("Ack the message: %s", sqlm.ToJSON())
 				if err := m.Ack(); err != nil {
@@ -303,17 +303,23 @@ func main() {
 		}
 	}
 
-	log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
-	Pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)
+	// left blank string, the function assign automatic consumer id
+	msgs, err := qc.Consume("")
+	if err != nil {
+		log.Error(err)
+	}
 
-	log.Print("Connecting consuming function to workers poll")
-	Pool.Proccess(msgs)
+	// Creating workers pool
+	pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)
+	pool.Start()
+	pool.Proccess(msgs)
 
 	// Here the main is blocked until doesn't receive a OS Signals
 	// This is blocking the func main() routine until chan osSignal receive a value inside
 
 	<-osSignal
 	log.Warn("Stoping workers...")
+	pool.Stop()
 
 	// call context cancellation
 	log.Info("Cancelling application context, gracefully shutdown")

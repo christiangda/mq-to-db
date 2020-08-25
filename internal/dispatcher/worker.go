@@ -30,10 +30,13 @@ type Pool struct {
 
 	workers    map[string]*worker
 	numWorkers int
+	name       string
 }
 
 // NewPool returns a new pool. A Pool is a mechanisms to comunicate consumer messages and workers
 func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st storage.Store) *Pool {
+
+	log.Infof("Creating workers pool: %s, with: %d workers", namePrefix, num)
 
 	ws := make(map[string]*worker)
 	ms := make(MessagesChannel)
@@ -57,18 +60,20 @@ func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st st
 		wg:         sync.WaitGroup{},
 		workers:    ws,
 		numWorkers: num,
+		name:       namePrefix,
 	}
 }
 
 // Start the pool of workers and wait until Proccess is called to start processing
 func (p *Pool) Start() *Pool {
+
 	// Start workers
 	for id, w := range p.workers {
-		log.Infof("Starting worker: ", id)
+		log.Infof("Starting worker: %s", id)
 		w.start()
 	}
 
-	//
+	// dispatching messages between workers
 	go func() {
 		for {
 			select {
@@ -85,18 +90,25 @@ func (p *Pool) Start() *Pool {
 // Proccess consume from the message channel and using the processor function proccess these
 func (p *Pool) Proccess(msgs <-chan consumer.Messages) {
 
-	// put messages on a channel shared with all workers
-	for m := range msgs {
-		p.messages <- m
-	}
+	log.Info("Starting to process with workers poll")
+
+	go func() { // needs to run into routine, doesn't block main routine
+		// put messages on a channel shared with all workers
+		for m := range msgs {
+			p.messages <- m
+		}
+
+	}()
 }
 
 // Stop the pool of workers gracefully
 func (p *Pool) Stop() {
-	for id, w := range p.workers {
-		log.Infof("Stopping worker: %s", id)
-		w.stop()
-	}
+	go func() {
+		for id, w := range p.workers {
+			log.Infof("Stopping worker: %s", id)
+			w.stop()
+		}
+	}()
 }
 
 // worker encapsulates a work item that should go in a work
@@ -133,17 +145,21 @@ func (w *worker) start() {
 	go func() {
 		for { // run until no messages to consume or send data over quit channel
 
+			log.Debugf("Worker: %s ready", w.id)
 			// when available, put the messages again on the queue
 			// and wait to receive a message
 			w.queue <- w.messages
 
 			select {
+
 			case m := <-w.messages: // get one message from the messages queue
 				// process the messages
 				w.processor(w.ctx, m, w.st)
+				log.Debugf("Worker: %s done", w.id)
 			case <-w.quit:
 				// we have received a signal to stop
 				close(w.queue) // tell to pool dispatcher that no send more mesages, channel is closed
+				log.Warnf("-----------------------------------------------Worker: %s stopped", w.id)
 				return
 			}
 		}
