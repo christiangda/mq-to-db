@@ -245,25 +245,23 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	log.Print("Get consuming channel")
-
-	// log.Print("Consuming messages one by one")
-	// go func() {
-	// 	for msg := range msgs {
-	// 		processorF(appCtx, msg, db)
-	// 	}
-	// }()
-
-	// This function return nothing because is a messages parser flow generate some errors
-	// we reject the messages
-	var processor dispatcher.Processor = messagesProcessor
-	var consumer dispatcher.ConsummerFunction = qc.Consume
-
-	// left blank string, the function assign automatic consumer id
+	// // left blank string, the function assign automatic consumer id
+	// log.Info("Get consuming channel")
 	// msgs, err := qc.Consume("")
 	// if err != nil {
 	// 	log.Error(err)
 	// }
+	//
+	// log.Info("Consuming messages one by one")
+	// go func() {
+	// 	for msg := range msgs {
+	// 		messagesProcessor(appCtx, msg, db)
+	// 	}
+	// }()
+
+	// Create the processor function as a type and consumer function as a type
+	var processor dispatcher.Processor = messagesProcessor
+	var consumer dispatcher.ConsummerFunction = qc.Consume
 
 	// Creating workers pool
 	pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)

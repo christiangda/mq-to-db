@@ -42,7 +42,8 @@ func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st st
 	log.Infof("Creating workers pool: %s, with: %d workers", namePrefix, num)
 
 	ws := make(map[string]*worker)
-	cs := make(ConsummerChannel, num)
+	//cs := make(ConsummerChannel, num)
+	cs := make(ConsummerChannel)
 	q := make(ConsummerQueue)
 
 	for i := 0; i < num; i++ {
