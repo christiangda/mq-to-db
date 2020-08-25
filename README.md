@@ -82,8 +82,13 @@ go build \
 
 ### Free books
 
+* [https://www.openmymind.net/The-Little-Go-Book/](https://www.openmymind.net/The-Little-Go-Book/)
 * https://golang.org/doc/effective_go.html#generality
 * [https://golang.org/doc/code.html](https://golang.org/doc/code.html)
+
+### Blogs
+
+* [https://www.goin5minutes.com/screencasts/](https://www.goin5minutes.com/screencasts/)
 
 ### Databases
 
@@ -145,3 +150,12 @@ go build \
 * [https://ewencp.org/blog/golang-iterators/](https://ewencp.org/blog/golang-iterators/)
 * [https://pkg.go.dev/google.golang.org/api/iterator?tab=doc#example-package-ServerPages](https://pkg.go.dev/google.golang.org/api/iterator?tab=doc#example-package-ServerPages)
 * [https://github.com/googleapis/google-cloud-go/wiki/Iterator-Guidelines](https://github.com/googleapis/google-cloud-go/wiki/Iterator-Guidelines)
+
+### Concurrency
+
+* [https://www.goin5minutes.com/blog/channel_over_channel/](https://www.goin5minutes.com/blog/channel_over_channel/)
+
+### Workers Pool
+
+* [https://brandur.org/go-worker-pool](https://brandur.org/go-worker-pool)
+* [https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/](https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/)

@@ -22,12 +22,6 @@ type Consumer interface {
 	Close() error
 }
 
-// Iterator define functionality to iterate over messages
-type Iterator interface {
-	Next() (*Messages, error)
-	Close() error
-}
-
 // Priority represents a priority level for message queue
 type Priority uint8
 

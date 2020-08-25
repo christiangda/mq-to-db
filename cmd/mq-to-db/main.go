@@ -15,9 +15,11 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
+	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
+	"github.com/christiangda/mq-to-db/internal/worker"
 
 	"os"
 	"strings"
@@ -245,23 +247,19 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	// workers to proccess every consumed message
-	for id := 1; id <= conf.Consumer.Workers; id++ {
+	log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
+	cPool := worker.NewPool(appCtx, &wg, conf.Consumer.Workers, conf.Application.Name)
 
-		// creates a worker id
-		wid := fmt.Sprintf("%s-w-%d", conf.Application.Name, id)
+	// log.Print("Get consuming channel")
+	// job, err := qc.Consume("")
+	// if err != nil {
+	// 	log.Error(err)
+	// }
 
-		// Add control for new worker routine
-		wg.Add(1)
+	log.Print("Connecting consuming function to workers poll")
+	cPool.ConsumeFrom(qc.Consume)
 
-		// Create a worker
-		w := consumer.NewWorker(appCtx, &wg, wid, db)
-
-		// Start a go routine
-		go w.Start(qc.Consume(wid))
-	}
-
-	// Here the function main is blocked
+	// Here the main is blocked until doesn't receive a OS Signals
 	// This is blocking the func main() routine until chan osSignal receive a value inside
 	<-osSignal
 	log.Warn("Stoping workers...")
@@ -306,4 +304,44 @@ func ListenOSSignals(osSignal *chan bool) {
 		// Notify main routine shutdown is done
 		*osSignal <- true
 	}(osSignal)
+}
+
+func proccessMessages(ctx context.Context, m consumer.Messages, st storage.Store) {
+
+	log.Infof("Processing message: %s", m.Payload)
+
+	// try to convert the message payload to a SQL message type
+	sqlm, err := messages.NewSQL(m.Payload)
+	if err != nil {
+		log.Errorf("Error creating SQL Message: %s", err)
+
+		if err := m.Reject(false); err != nil {
+			log.Errorf("Error rejecting rabbitmq message: %v", err)
+		}
+	} else {
+
+		res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
+		if err != nil {
+			log.Errorf("Error storing SQL payload: %v", err)
+
+			if err := m.Reject(false); err != nil {
+				log.Errorf("Error rejecting rabbitmq message: %v", err)
+			}
+		} else {
+
+			if err := m.Ack(); err != nil {
+				log.Errorf("Error executing ack on rabbitmq message: %v", err)
+			}
+
+			log.Debugf("SQL message: %s", sqlm.ToJSON())
+
+			r, err := res.RowsAffected()
+			if err != nil {
+				log.Errorf("Error getting SQL result id: %v", err)
+			}
+			log.Debugf("DB Execution Result: %v", r)
+		}
+
+	}
+	m.Ack()
 }

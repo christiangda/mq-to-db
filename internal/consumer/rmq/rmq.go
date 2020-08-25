@@ -1,7 +1,6 @@
 package rmq
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -19,8 +18,9 @@ type Consumer struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
-	appName            string
-	uri                string
+	name string
+	uri  string
+
 	requestedHeartbeat time.Duration
 	virtualHost        string
 	queue              struct {
@@ -47,7 +47,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", c.Consumer.Username, c.Consumer.Password, c.Consumer.Address, c.Consumer.Port)
 
 	return &Consumer{
-		appName:            c.Application.Name,
+		name:               c.Application.Name,
 		uri:                uri,
 		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
 		virtualHost:        c.Consumer.VirtualHost,
@@ -94,6 +94,7 @@ func (c *Consumer) Connect() {
 		amqpConfig.Vhost = c.virtualHost
 	}
 
+	log.Debugf("Connecting to: %s", c.uri)
 	conn, err := amqp.DialConfig(
 		c.uri,
 		amqpConfig,
@@ -104,6 +105,7 @@ func (c *Consumer) Connect() {
 	//defer conn.Close()
 	c.conn = conn
 
+	log.Debug("Getting Channel")
 	ch, err := c.conn.Channel()
 	if err != nil {
 		log.Fatal(err)
@@ -111,6 +113,7 @@ func (c *Consumer) Connect() {
 	//defer ch.Close()
 	c.channel = ch
 
+	log.Debugf("Declaring channel exchange: %s", c.exchange.name)
 	err = c.channel.ExchangeDeclare(
 		c.exchange.name,
 		c.exchange.kind,
@@ -124,6 +127,7 @@ func (c *Consumer) Connect() {
 		log.Fatal(err)
 	}
 
+	log.Debugf("Declaring channel queue: %s", c.queue.name)
 	q, err := c.channel.QueueDeclare(
 		c.queue.name,
 		c.queue.durable,
@@ -136,6 +140,7 @@ func (c *Consumer) Connect() {
 		log.Fatal(err)
 	}
 
+	log.Debugf("Binding queue: %s to exchange: %s using routing key: %s", q.Name, c.exchange.name, c.queue.routingKey)
 	err = c.channel.QueueBind(
 		q.Name,
 		c.queue.routingKey,
@@ -155,7 +160,7 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 		id = c.newConsumerID()
 	}
 
-	// this is a blocking operation because you are consuming a channel
+	// Register a consumer
 	msgs, err := c.channel.Consume(
 		c.queue.name,
 		id,                // consumer id
@@ -171,6 +176,7 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 
 	out := make(chan consumer.Messages)
 
+	// NOTE: This is necessary to consume the original channel without blocking it
 	go func() {
 		for d := range msgs {
 			out <- consumer.Messages{
@@ -186,13 +192,12 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 	}()
 
 	return out, nil
-	//return &Iterator{messages: msgs, ch: c.channel, id: id}, nil
 }
 
 // newConsumerID generate a unique consumer id compose
-// by '<application name>-<queue name>-<uuid>'
+// by '<application name>-w-<uuid>'
 func (c *Consumer) newConsumerID() string {
-	return fmt.Sprintf("%s-w-%s", c.appName, uuid.New().String())
+	return fmt.Sprintf("%s-w-%s", c.name, uuid.New().String())
 }
 
 // Close the channel connection
@@ -204,42 +209,6 @@ func (c *Consumer) Close() error {
 		return err
 	}
 	return nil
-}
-
-// Iterator iterates over consume messages
-// Implements Consumer.Iterator
-type Iterator struct {
-	id       string
-	ch       *amqp.Channel
-	messages <-chan amqp.Delivery
-}
-
-// Next returns the next message in the iterator.
-func (i *Iterator) Next() (*consumer.Messages, error) {
-
-	d, ok := <-i.messages
-	if !ok {
-		return nil, errors.New("Channel is closed")
-	}
-
-	m := &consumer.Messages{}
-	m.MessageID = d.MessageId
-	m.Priority = consumer.Priority(d.Priority)
-	m.Timestamp = d.Timestamp
-	m.ContentType = d.ContentType
-	m.Acknowledger = &Acknowledger{d.Acknowledger, d.DeliveryTag}
-	m.Payload = d.Body
-
-	return m, nil
-}
-
-// Close closes the channel of the Iterator.
-func (i *Iterator) Close() error {
-	if err := i.ch.Cancel(i.id, false); err != nil {
-		return err
-	}
-
-	return i.ch.Close()
 }
 
 // Acknowledger implements the Acknowledger for AMQP library.
