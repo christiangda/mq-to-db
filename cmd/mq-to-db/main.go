@@ -256,63 +256,19 @@ func main() {
 
 	// This function return nothing because is a messages parser flow generate some errors
 	// we reject the messages
-	var processor dispatcher.Processor = func(ctx context.Context, m consumer.Messages, st storage.Store) {
-
-		log.Debugf("Processing message: %s", m.Payload)
-
-		sqlm, err := messages.NewSQL(m.Payload)
-		if err != nil {
-			log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
-
-			if err := m.Reject(false); err != nil {
-				log.Errorf("Error rejecting message: %v", err)
-			}
-		} else {
-			// we use else sentences because we cannot broke the flow of execution (only logs), so
-			// sqlm if fine here.
-
-			log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-
-			// The result isn't used
-			res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
-			if err != nil {
-				log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
-
-				if err := m.Reject(false); err != nil {
-					log.Errorf("Error rejecting message: %v", err)
-				}
-			} else {
-				// we use else sentences because we cannot broke the flow of execution (only logs), so
-				// ExecContext was fine
-
-				val, err := res.RowsAffected()
-				if err != nil {
-					log.Error(err)
-				}
-				log.Debugf("SQL Execution return: %v", val)
-
-				log.Debugf("Ack the message: %s", sqlm.ToJSON())
-				if err := m.Ack(); err != nil {
-					log.Errorf("Error ack on message: %v, the message will be rejected", err)
-
-					if err := m.Reject(false); err != nil {
-						log.Errorf("Error rejecting message: %v", err)
-					}
-				}
-			}
-		}
-	}
+	var processor dispatcher.Processor = messagesProcessor
+	var consumer dispatcher.ConsummerFunction = qc.Consume
 
 	// left blank string, the function assign automatic consumer id
-	msgs, err := qc.Consume("")
-	if err != nil {
-		log.Error(err)
-	}
+	// msgs, err := qc.Consume("")
+	// if err != nil {
+	// 	log.Error(err)
+	// }
 
 	// Creating workers pool
 	pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)
 	pool.Start()
-	pool.Proccess(msgs)
+	pool.Proccess(consumer)
 
 	// Here the main is blocked until doesn't receive a OS Signals
 	// This is blocking the func main() routine until chan osSignal receive a value inside
@@ -358,4 +314,51 @@ func ListenOSSignals(osSignal *chan bool) {
 		// Notify main routine shutdown is done
 		*osSignal <- true
 	}(osSignal)
+}
+
+func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Store) {
+
+	log.Debugf("Processing message: %s", m.Payload)
+
+	sqlm, err := messages.NewSQL(m.Payload)
+	if err != nil {
+		log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
+
+		if err := m.Reject(false); err != nil {
+			log.Errorf("Error rejecting message: %v", err)
+		}
+	} else {
+		// we use else sentences because we cannot broke the flow of execution (only logs), so
+		// sqlm if fine here.
+
+		log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
+
+		// The result isn't used
+		res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
+		if err != nil {
+			log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
+
+			if err := m.Reject(false); err != nil {
+				log.Errorf("Error rejecting message: %v", err)
+			}
+		} else {
+			// we use else sentences because we cannot broke the flow of execution (only logs), so
+			// ExecContext was fine
+
+			val, err := res.RowsAffected()
+			if err != nil {
+				log.Error(err)
+			}
+			log.Debugf("SQL Execution return: %v", val)
+
+			log.Debugf("Ack the message: %s", sqlm.ToJSON())
+			if err := m.Ack(); err != nil {
+				log.Errorf("Error ack on message: %v, the message will be rejected", err)
+
+				if err := m.Reject(false); err != nil {
+					log.Errorf("Error rejecting message: %v", err)
+				}
+			}
+		}
+	}
 }

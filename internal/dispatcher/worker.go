@@ -14,16 +14,19 @@ import (
 // and proccess a m message to store into the st Store.
 type Processor func(ctx context.Context, m consumer.Messages, st storage.Store)
 
-// MessagesChannel receive messages to be processed
-type MessagesChannel chan consumer.Messages
+// ConsummerFunction is a
+type ConsummerFunction func(id string) (<-chan consumer.Messages, error)
 
-// MessagesQueue shared with every worker into the pool
-type MessagesQueue chan chan consumer.Messages
+// ConsummerChannel receive messages to be processed
+type ConsummerChannel chan ConsummerFunction
+
+// ConsummerQueue shared with every worker into the pool
+type ConsummerQueue chan chan ConsummerFunction
 
 // Pool is the link between consumer messages and workers
 type Pool struct {
-	messages MessagesChannel // consumer puts messages here
-	queue    MessagesQueue   // shared Messages (channel) between the workers
+	consumers ConsummerChannel // channel of consummers
+	queue     ConsummerQueue   // shared channels with consummers shared between the workers
 
 	ctx context.Context // app context
 	wg  sync.WaitGroup  // workers coordinator
@@ -39,8 +42,8 @@ func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st st
 	log.Infof("Creating workers pool: %s, with: %d workers", namePrefix, num)
 
 	ws := make(map[string]*worker)
-	ms := make(MessagesChannel)
-	q := make(MessagesQueue)
+	cs := make(ConsummerChannel)
+	q := make(ConsummerQueue)
 
 	for i := 0; i < num; i++ {
 
@@ -53,8 +56,8 @@ func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st st
 	}
 
 	return &Pool{
-		messages: ms,
-		queue:    q,
+		consumers: cs,
+		queue:     q,
 
 		ctx:        ctx,
 		wg:         sync.WaitGroup{},
@@ -77,9 +80,9 @@ func (p *Pool) Start() *Pool {
 	go func() {
 		for {
 			select {
-			case msgs := <-p.messages: // listen to a submitted job on messages channel
+			case cs := <-p.consumers: // listen to a submitted job on messages channel
 				qChan := <-p.queue // pull out an available worker from queue
-				qChan <- msgs      // submit the messages on the available worker
+				qChan <- cs        // submit the messages on the available worker
 			}
 		}
 	}()
@@ -88,16 +91,13 @@ func (p *Pool) Start() *Pool {
 }
 
 // Proccess consume from the message channel and using the processor function proccess these
-func (p *Pool) Proccess(msgs <-chan consumer.Messages) {
+func (p *Pool) Proccess(cf ConsummerFunction) {
 
 	log.Info("Starting to process with workers poll")
 
 	go func() { // needs to run into routine, doesn't block main routine
 		// put messages on a channel shared with all workers
-		for m := range msgs {
-			p.messages <- m
-		}
-
+		p.consumers <- cf
 	}()
 }
 
@@ -118,22 +118,22 @@ type worker struct {
 	quit chan bool
 	ctx  context.Context // app context
 
-	messages MessagesChannel
-	queue    MessagesQueue
+	consumers ConsummerChannel
+	queue     ConsummerQueue
 
 	processor Processor // The function executed by workers
 	st        storage.Store
 }
 
 // NewWorker return a new worker
-func newWorker(ctx context.Context, id string, q MessagesQueue, p Processor, st storage.Store) *worker {
+func newWorker(ctx context.Context, id string, q ConsummerQueue, p Processor, st storage.Store) *worker {
 	return &worker{
 		id:   id,
 		ctx:  ctx,
 		quit: make(chan bool),
 
-		queue:    q,
-		messages: make(MessagesChannel),
+		queue:     q,
+		consumers: make(ConsummerChannel),
 
 		processor: p,
 		st:        st,
@@ -148,14 +148,22 @@ func (w *worker) start() {
 			log.Debugf("Worker: %s ready", w.id)
 			// when available, put the messages again on the queue
 			// and wait to receive a message
-			w.queue <- w.messages
+			w.queue <- w.consumers
 
 			select {
 
-			case m := <-w.messages: // get one message from the messages queue
-				// process the messages
-				w.processor(w.ctx, m, w.st)
+			case cf := <-w.consumers: // get one message from the messages queue
+
+				msgs, err := cf(w.id)
+				if err != nil {
+					log.Errorf("Error consumming, channel is closed, worker id: %s", w.id)
+				}
+				for m := range msgs {
+					// process the messages
+					w.processor(w.ctx, m, w.st)
+				}
 				log.Debugf("Worker: %s done", w.id)
+
 			case <-w.quit:
 				// This only occurs when worker is processing and you send quit signal
 				close(w.queue) // tell to pool dispatcher that no send more mesages, channel is closed
