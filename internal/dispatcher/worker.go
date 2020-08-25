@@ -105,7 +105,7 @@ func (p *Pool) Proccess(msgs <-chan consumer.Messages) {
 func (p *Pool) Stop() {
 	go func() {
 		for id, w := range p.workers {
-			log.Infof("Stopping worker: %s", id)
+			log.Warnf("Stopping worker: %s", id)
 			w.stop()
 		}
 	}()
@@ -157,9 +157,9 @@ func (w *worker) start() {
 				w.processor(w.ctx, m, w.st)
 				log.Debugf("Worker: %s done", w.id)
 			case <-w.quit:
-				// we have received a signal to stop
+				// This only occurs when worker is processing and you send quit signal
 				close(w.queue) // tell to pool dispatcher that no send more mesages, channel is closed
-				log.Warnf("-----------------------------------------------Worker: %s stopped", w.id)
+				log.Debug("Worker: %s stopped", w.id)
 				return
 			}
 		}
