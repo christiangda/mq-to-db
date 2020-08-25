@@ -42,7 +42,7 @@ func NewPool(ctx context.Context, num int, namePrefix string, p Processor, st st
 	log.Infof("Creating workers pool: %s, with: %d workers", namePrefix, num)
 
 	ws := make(map[string]*worker)
-	cs := make(ConsummerChannel)
+	cs := make(ConsummerChannel, num)
 	q := make(ConsummerQueue)
 
 	for i := 0; i < num; i++ {
@@ -95,10 +95,13 @@ func (p *Pool) Proccess(cf ConsummerFunction) {
 
 	log.Info("Starting to process with workers poll")
 
-	go func() { // needs to run into routine, doesn't block main routine
-		// put messages on a channel shared with all workers
-		p.consumers <- cf
-	}()
+	for i := 0; i < p.numWorkers; i++ { //creating the same numbers of consumers as workers
+		go func() { // needs to run into routine, doesn't block main routine
+			// put messages on a channel shared with all workers
+			p.consumers <- cf
+		}()
+
+	}
 }
 
 // Stop the pool of workers gracefully
@@ -167,7 +170,7 @@ func (w *worker) start() {
 			case <-w.quit:
 				// This only occurs when worker is processing and you send quit signal
 				close(w.queue) // tell to pool dispatcher that no send more mesages, channel is closed
-				log.Debug("Worker: %s stopped", w.id)
+				log.Debugf("Worker: %s stopped", w.id)
 				return
 			}
 		}

@@ -1,6 +1,6 @@
 ---
 consumer:
-  workers: 1
+  workers: 10
   kind: rabbitmq
   address: 127.0.0.1
   port: 5672

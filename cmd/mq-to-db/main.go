@@ -278,21 +278,21 @@ func main() {
 	pool.Stop()
 
 	// call context cancellation
-	log.Info("Cancelling application context, gracefully shutdown")
+	log.Warn("Executing context cancellation, gracefully shutdown")
 	cancel()
 
 	// Closes sockets
-	log.Info("Closing Consumer connections")
+	log.Warn("Closing Consumer connections")
 	if err := qc.Close(); err != nil {
 		log.Error(err)
 	}
-	log.Info("Consumer connections closed")
+	log.Warn("Consumer connections closed")
 
-	log.Info("Closing Database connections")
+	log.Warn("Closing Database connections")
 	if err := db.Close(); err != nil {
 		log.Error(err)
 	}
-	log.Info("Database connections closed")
+	log.Warn("Database connections closed")
 }
 
 // ListenOSSignals is a functions that
