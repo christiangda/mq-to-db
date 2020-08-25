@@ -19,7 +19,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
-	"github.com/christiangda/mq-to-db/internal/worker"
 
 	"os"
 	"strings"
@@ -247,20 +246,29 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
-	cPool := worker.NewPool(appCtx, &wg, conf.Consumer.Workers, conf.Application.Name)
+	log.Print("Get consuming channel")
+	// left blank string, the function assign automatic consumer id
+	msgs, err := qc.Consume("")
+	if err != nil {
+		log.Error(err)
+	}
 
-	// log.Print("Get consuming channel")
-	// job, err := qc.Consume("")
-	// if err != nil {
-	// 	log.Error(err)
-	// }
+	log.Print("Consuming messages one by one")
+	go func() {
+		for msg := range msgs {
+			proccessMessages(appCtx, msg, db)
+		}
+	}()
 
-	log.Print("Connecting consuming function to workers poll")
-	cPool.ConsumeFrom(qc.Consume)
+	// log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
+	// cPool := worker.NewPool(appCtx, &wg, conf.Consumer.Workers, conf.Application.Name)
+
+	// log.Print("Connecting consuming function to workers poll")
+	// cPool.ConsumeFrom(qc.Consume)
 
 	// Here the main is blocked until doesn't receive a OS Signals
 	// This is blocking the func main() routine until chan osSignal receive a value inside
+
 	<-osSignal
 	log.Warn("Stoping workers...")
 
