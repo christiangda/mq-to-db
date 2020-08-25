@@ -154,8 +154,10 @@ go build \
 ### Concurrency
 
 * [https://www.goin5minutes.com/blog/channel_over_channel/](https://www.goin5minutes.com/blog/channel_over_channel/)
+* [https://go101.org/article/channel-use-cases.html](https://go101.org/article/channel-use-cases.html)
 
 ### Workers Pool
 
+* [https://www.prakharsrivastav.com/posts/golang-concurrent-worker-pool/](https://www.prakharsrivastav.com/posts/golang-concurrent-worker-pool/)
 * [https://brandur.org/go-worker-pool](https://brandur.org/go-worker-pool)
 * [https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/](https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/signal"
 	"path/filepath"
-	"sync"
 	"syscall"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
+	"github.com/christiangda/mq-to-db/internal/dispatcher"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
@@ -191,9 +191,9 @@ func main() {
 	osSignal := make(chan bool, 1) // this channels will be used to listen OS signals, like ^c
 	ListenOSSignals(&osSignal)     // this function as soon as receive an Operating System signals, put value in chan done
 
-	var wg sync.WaitGroup
 	appCtx := context.Background()
-	appCtx, cancel := context.WithCancel(appCtx)
+	//appCtx, cancel := context.WithCancel(appCtx)
+	appCtx, cancel := context.WithTimeout(appCtx, conf.Server.ShutdownTimeout)
 
 	// Create abstraction layers (Using interfaces)
 	var db storage.Store
@@ -253,18 +253,61 @@ func main() {
 		log.Error(err)
 	}
 
-	log.Print("Consuming messages one by one")
-	go func() {
-		for msg := range msgs {
-			proccessMessages(appCtx, msg, db)
+	// log.Print("Consuming messages one by one")
+	// go func() {
+	// 	for msg := range msgs {
+	// 		processorF(appCtx, msg, db)
+	// 	}
+	// }()
+
+	// This function return nothing because is a messages parser flow generate some errors
+	// we reject the messages
+	var processor dispatcher.Processor = func(ctx context.Context, m consumer.Messages, st storage.Store) {
+
+		log.Debugf("Processing message: %s", m.Payload)
+
+		sqlm, err := messages.NewSQL(m.Payload)
+		if err != nil {
+			log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
+
+			if err := m.Reject(false); err != nil {
+				log.Errorf("Error rejecting message: %v", err)
+			}
+		} else {
+			// we use else sentences because we cannot broke the flow of execution (only logs), so
+			// sqlm if fine here.
+
+			log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
+
+			// The result isn't used
+			_, err := st.ExecContext(ctx, sqlm.Content.Sentence)
+			if err != nil {
+				log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
+
+				if err := m.Reject(false); err != nil {
+					log.Errorf("Error rejecting message: %v", err)
+				}
+			} else {
+				// we use else sentences because we cannot broke the flow of execution (only logs), so
+				// ExecContext was fine
+
+				log.Debugf("Ack the message: %s", sqlm.ToJSON())
+				if err := m.Ack(); err != nil {
+					log.Errorf("Error ack on message: %v, the message will be rejected", err)
+
+					if err := m.Reject(false); err != nil {
+						log.Errorf("Error rejecting message: %v", err)
+					}
+				}
+			}
 		}
-	}()
+	}
 
-	// log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
-	// cPool := worker.NewPool(appCtx, &wg, conf.Consumer.Workers, conf.Application.Name)
+	log.Printf("Creating workers pool: %s, with: %d workers", conf.Application.Name, conf.Consumer.Workers)
+	Pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)
 
-	// log.Print("Connecting consuming function to workers poll")
-	// cPool.ConsumeFrom(qc.Consume)
+	log.Print("Connecting consuming function to workers poll")
+	Pool.Proccess(msgs)
 
 	// Here the main is blocked until doesn't receive a OS Signals
 	// This is blocking the func main() routine until chan osSignal receive a value inside
@@ -273,11 +316,8 @@ func main() {
 	log.Warn("Stoping workers...")
 
 	// call context cancellation
+	log.Info("Cancelling application context, gracefully shutdown")
 	cancel()
-
-	// This is waiting until all the workers finished
-	wg.Wait()
-	log.Info("Workers stopped")
 
 	// Closes sockets
 	log.Info("Closing Consumer connections")
@@ -312,47 +352,4 @@ func ListenOSSignals(osSignal *chan bool) {
 		// Notify main routine shutdown is done
 		*osSignal <- true
 	}(osSignal)
-}
-
-// This function return nothing because is a messages parser flow generate some errors
-// we reject the messages
-func proccessMessages(ctx context.Context, m consumer.Messages, st storage.Store) {
-
-	log.Debugf("Processing message: %s", m.Payload)
-
-	sqlm, err := messages.NewSQL(m.Payload)
-	if err != nil {
-		log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
-
-		if err := m.Reject(false); err != nil {
-			log.Errorf("Error rejecting message: %v", err)
-		}
-	} else {
-		// we use else sentences because we cannot broke the flow of execution (only logs), so
-		// sqlm if fine here.
-
-		log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-
-		// The result isn't used
-		_, err := st.ExecContext(ctx, sqlm.Content.Sentence)
-		if err != nil {
-			log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
-
-			if err := m.Reject(false); err != nil {
-				log.Errorf("Error rejecting message: %v", err)
-			}
-		} else {
-			// we use else sentences because we cannot broke the flow of execution (only logs), so
-			// ExecContext was fine
-
-			log.Debugf("Ack the message: %s", sqlm.ToJSON())
-			if err := m.Ack(); err != nil {
-				log.Errorf("Error ack on message: %v, the message will be rejected", err)
-
-				if err := m.Reject(false); err != nil {
-					log.Errorf("Error rejecting message: %v", err)
-				}
-			}
-		}
-	}
 }
