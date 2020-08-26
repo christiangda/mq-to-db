@@ -66,12 +66,25 @@ make
 
 ## How to build
 
+Manually
+
 ```bash
 go build \
     -o mq-to-db \
     -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(git rev-parse --abbrev-ref HEAD) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(git rev-parse HEAD) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(git rev-parse --abbrev-ref HEAD) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(git config --get user.name | tr -d '\040\011\012\015\n')\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(date +'%Y-%m-%dT%H:%M:%S')" \
     ./cmd/mq-to-db/main.go
 ```
+
+Automatic
+
+```bash
+make
+```
+
+__NOTES__ related to make
+
+* 1. This create a linux binary (64bits) and also Docker Image (linux 64 bit)
+* 2. Check the `Makefile` to see the `make targets`
 
 ## Internal References
 
@@ -122,6 +135,7 @@ go build \
 
 ### RabbitMQ
 
+* [https://gigi.nullneuron.net/gigilabs/rabbitmq-who-creates-the-queues-and-exchanges/](https://gigi.nullneuron.net/gigilabs/rabbitmq-who-creates-the-queues-and-exchanges/)
 * [https://www.rabbitmq.com/queues.html#optional-arguments](https://www.rabbitmq.com/queues.html#optional-arguments)
 * [https://www.rabbitmq.com/dlx.html](https://www.rabbitmq.com/dlx.html)
 * [https://www.rabbitmq.com/vhosts.html](https://www.rabbitmq.com/vhosts.html)
