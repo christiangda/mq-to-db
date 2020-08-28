@@ -1,6 +1,9 @@
 ---
+dispatcher:
+  consumerConcurrency: 4 # Number of go routines consuming messages from Queue
+  storageWorkers: 30  # Number of go routines sending messages to storage
+
 consumer:
-  workers: 15
   kind: rabbitmq
   address: 127.0.0.1
   port: 5672

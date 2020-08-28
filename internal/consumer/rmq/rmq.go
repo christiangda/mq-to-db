@@ -8,8 +8,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
-
-	uuid "github.com/google/uuid"
 )
 
 // Consumer is a RabbitMQ consumer configuration
@@ -156,10 +154,6 @@ func (c *Consumer) Connect() {
 // Consume messages from the channel
 func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 
-	if id == "" {
-		id = c.newConsumerID()
-	}
-
 	// Register a consumer
 	msgs, err := c.channel.Consume(
 		c.queue.name,
@@ -174,6 +168,9 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 		return nil, err
 	}
 
+	// This channels is used to be filled by messages comming from
+	// the queue system
+	// This is part of "producer-consume queue pattern"
 	out := make(chan consumer.Messages)
 
 	// NOTE: This is necessary to consume the original channel without blocking it
@@ -192,12 +189,6 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 	}()
 
 	return out, nil
-}
-
-// newConsumerID generate a unique consumer id compose
-// by '<application name>-w-<uuid>'
-func (c *Consumer) newConsumerID() string {
-	return fmt.Sprintf("%s-w-%s", c.name, uuid.New().String())
 }
 
 // Close the channel connection

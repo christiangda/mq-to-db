@@ -33,8 +33,12 @@ type Config struct {
 		Debug             bool          `json:"debug" yaml:"debug"`
 	}
 
+	Dispatcher struct {
+		ConsumerConcurrency int `json:"consumerConcurrency" yaml:"consumerConcurrency"`
+		StorageWorkers      int `json:"storageWorkers" yaml:"storageWorkers"`
+	}
+
 	Consumer struct {
-		Workers            int           `json:"workers" yaml:"workers"`
 		Kind               string        `json:"kind" yaml:"kind"`
 		Address            string        `json:"address" yaml:"address"`
 		Port               int           `json:"port" yaml:"port"`

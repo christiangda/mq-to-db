@@ -167,6 +167,8 @@ __NOTES__ related to make
 
 ### Concurrency
 
+* [https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be](https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be)
+* [https://blog.golang.org/pipelines](https://blog.golang.org/pipelines)
 * [https://www.goin5minutes.com/blog/channel_over_channel/](https://www.goin5minutes.com/blog/channel_over_channel/)
 * [https://go101.org/article/channel-use-cases.html](https://go101.org/article/channel-use-cases.html)
 

@@ -14,7 +14,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
-	"github.com/christiangda/mq-to-db/internal/dispatcher"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
@@ -130,6 +129,13 @@ func main() {
 
 	// Viper default values to conf parameters when config file doesn't have it
 	// The config file values overrides these
+
+	// ***** Dispatcher *****
+	// dispatcher.consumerConcurrency: 1
+	// dispatcher.storageWorkers: 5
+	v.SetDefault("dispatcher.consumerConcurrency", 1)
+	v.SetDefault("dispatcher.storageWorkers", 5)
+
 	// ***** DATABASE *****
 	// database.kind: postgresql
 	// database.port: 5432
@@ -245,35 +251,64 @@ func main() {
 	log.Infof("Connecting to consumer")
 	qc.Connect()
 
-	// // left blank string, the function assign automatic consumer id
-	// log.Info("Get consuming channel")
-	// msgs, err := qc.Consume("")
-	// if err != nil {
-	// 	log.Error(err)
-	// }
-	//
-	// log.Info("Consuming messages one by one")
-	// go func() {
-	// 	for msg := range msgs {
-	// 		messagesProcessor(appCtx, msg, db)
-	// 	}
-	// }()
+	// Logic of channels for consumer and for storage
+	// ********************************************
 
-	// Create the processor function as a type and consumer function as a type
-	var processor dispatcher.Processor = messagesProcessor
-	var consumer dispatcher.ConsummerFunction = qc.Consume
+	// This define the sign of a consumer function
+	type consumerFunction func(ctx context.Context, id string, c consumer.Consumer) <-chan consumer.Messages
 
-	// Creating workers pool
-	pool := dispatcher.NewPool(appCtx, conf.Consumer.Workers, conf.Application.Name, processor, db)
-	pool.Start()
-	pool.Proccess(consumer)
+	// where the consumers will put the messages
+	//msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
+	msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
 
-	// Here the main is blocked until doesn't receive a OS Signals
-	// This is blocking the func main() routine until chan osSignal receive a value inside
+	// Start storage workers
+	log.Infof("Starting storage workers: %d", conf.Dispatcher.StorageWorkers)
+	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
+		// ids for storage workers
+		id := fmt.Sprintf("%s-storage-worker-%d", conf.Application.Name, i)
+
+		go func(ctx context.Context, id string, msgs <-chan consumer.Messages, st storage.Store) {
+
+			log.Infof("Starting storage worker: %s", id)
+
+			for {
+				select {
+				case m := <-msgs:
+					messagesProcessor(ctx, m, st)
+				case <-ctx.Done():
+					log.Warnf("Stoping storage worker: %s", id)
+					return
+				}
+			}
+		}(appCtx, id, msgsChan, db)
+	}
+
+	// Start Consumers
+	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
+	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
+		// ids for consumers
+		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
+
+		go func(ctx context.Context, id string, c consumer.Consumer) {
+
+			log.Infof("Starting consumer: %s", id)
+
+			for {
+				select {
+				case msgs := <-messagesConsumer(appCtx, id, c):
+					msgsChan <- msgs
+				case <-ctx.Done():
+					log.Warnf("Stoping consumer: %s", id)
+					return
+				}
+			}
+		}(appCtx, id, qc)
+	}
+
+	// ********************************************
 
 	<-osSignal
 	log.Warn("Stoping workers...")
-	pool.Stop()
 
 	// call context cancellation
 	log.Warn("Executing context cancellation, gracefully shutdown")
@@ -312,6 +347,16 @@ func ListenOSSignals(osSignal *chan bool) {
 		// Notify main routine shutdown is done
 		*osSignal <- true
 	}(osSignal)
+}
+
+func messagesConsumer(ctx context.Context, id string, c consumer.Consumer) <-chan consumer.Messages {
+
+	msgs, err := c.Consume(id)
+	if err != nil {
+		log.Errorf("Error consuming, channel is closed, worker id: %s", id)
+	}
+
+	return msgs
 }
 
 func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Store) {
