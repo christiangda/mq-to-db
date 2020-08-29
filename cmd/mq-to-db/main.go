@@ -264,7 +264,7 @@ func main() {
 		// ids for consumers
 		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
 
-		go func(ctx context.Context, id string, c consumer.Consumer, qc consumer.Consumer, out chan<- consumer.Messages) {
+		go func(ctx context.Context, id string, qc consumer.Consumer, out chan<- consumer.Messages) {
 
 			msgs, err := qc.Consume(id)
 			if err != nil {
@@ -288,7 +288,7 @@ func main() {
 					return
 				}
 			}
-		}(appCtx, id, qc, qc, msgsChan)
+		}(appCtx, id, qc, msgsChan)
 	}
 
 	// Start storage workers
