@@ -46,6 +46,11 @@ var (
 )
 
 func init() { // package initializer
+	// Use logrus for standard log output
+	// Note that `log` here references stdlib's log
+	// Not logrus imported under the name `log`.
+	log.SetOutput(os.Stdout)
+	log.Out = os.Stdout
 
 	// Set default values
 	conf.Application.Name = appName
@@ -96,11 +101,6 @@ func init() { // package initializer
 		os.Exit(0)
 	}
 
-	// Use logrus for standard log output
-	// Note that `log` here references stdlib's log
-	// Not logrus imported under the name `log`.
-	log.SetOutput(os.Stdout)
-
 	// Logs conf
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
 		log.SetFormatter(&logrus.JSONFormatter{})
@@ -110,6 +110,7 @@ func init() { // package initializer
 
 	if conf.Server.Debug {
 		log.SetLevel(logrus.DebugLevel)
+		log.SetReportCaller(true)
 	} else {
 		log.SetLevel(logrus.InfoLevel)
 	}
@@ -256,7 +257,7 @@ func main() {
 	msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
-	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
+	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 1; i <= conf.Dispatcher.ConsumerConcurrency; i++ {
 
 		// ids for consumers
@@ -270,7 +271,7 @@ func main() {
 				log.Error(err)
 			}
 
-			log.Infof("Starting consumer: %s", id)
+			log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
 
 			// infinite loop for dispatch the messages read to the channel consummed from storage workers
 			for {
@@ -280,7 +281,7 @@ func main() {
 					out <- m
 
 				case <-ctx.Done():
-					log.Warnf("Stoping consumer: %s", id)
+					log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
 
 					// closes the consumer queue and connection
 					var wg sync.WaitGroup
@@ -298,7 +299,7 @@ func main() {
 	}
 
 	// Start storage workers
-	log.Infof("Starting storage workers: %d", conf.Dispatcher.StorageWorkers)
+	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 1; i <= conf.Dispatcher.StorageWorkers; i++ {
 
 		// ids for storage workers
@@ -306,7 +307,7 @@ func main() {
 
 		go func(ctx context.Context, id string, st storage.Store, msgs <-chan consumer.Messages) {
 
-			log.Infof("Starting storage worker: %s", id)
+			log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
 
 			for {
 				select {
@@ -315,7 +316,7 @@ func main() {
 					messagesProcessor(ctx, m, st) // proccess and storage message into db
 
 				case <-ctx.Done():
-					log.Warnf("Stoping storage worker: %s", id)
+					log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
 					return // go out of the for loop
 
 				}
