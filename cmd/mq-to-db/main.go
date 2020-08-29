@@ -101,7 +101,7 @@ func init() { // package initializer
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
 		log.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		log.SetFormatter(&logrus.TextFormatter{DisableColors: false})
+		log.SetFormatter(&logrus.TextFormatter{DisableColors: false, DisableTimestamp: false, FullTimestamp: true})
 	}
 
 	if conf.Server.Debug {
