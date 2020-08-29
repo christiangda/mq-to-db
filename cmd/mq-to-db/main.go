@@ -255,6 +255,7 @@ func main() {
 	// ********************************************
 
 	// where the consumers will put the messages
+	// this channel is used to comunicate consumers and storage workers
 	msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
@@ -278,6 +279,7 @@ func main() {
 					out <- m
 				case <-ctx.Done():
 					log.Warnf("Stoping consumer: %s", id)
+					qc.Close()
 					return
 				}
 			}
