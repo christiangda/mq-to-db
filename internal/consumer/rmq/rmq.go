@@ -6,7 +6,7 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	log "github.com/sirupsen/logrus"
+	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/streadway/amqp"
 )
 

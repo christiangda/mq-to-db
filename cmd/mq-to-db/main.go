@@ -16,6 +16,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/logger"
+	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
@@ -40,17 +41,12 @@ const (
 
 var (
 	conf config.Config
-
-	log = logrus.New()
-	v   = viper.New()
+	v    = viper.New()
 )
 
 func init() { // package initializer
-	// Use logrus for standard log output
-	// Note that `log` here references stdlib's log
-	// Not logrus imported under the name `log`.
-	log.SetOutput(os.Stdout)
-	log.Out = os.Stdout
+	host, _ := os.Hostname()
+	log.AddHook(logger.NewGlobalFieldsHook(appName, host, conf.Application.Version))
 
 	// Set default values
 	conf.Application.Name = appName
@@ -105,25 +101,21 @@ func init() { // package initializer
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
 		log.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		log.SetFormatter(&logrus.TextFormatter{})
+		log.SetFormatter(&logrus.TextFormatter{DisableColors: false})
 	}
 
 	if conf.Server.Debug {
 		log.SetLevel(logrus.DebugLevel)
-		log.SetReportCaller(true)
 	} else {
 		log.SetLevel(logrus.InfoLevel)
 	}
-
-	host, _ := os.Hostname()
-	log.AddHook(logger.NewGlobalFieldsHook(appName, host, conf.Application.Version))
 
 	log.Info("Application initialized")
 }
 
 func main() {
 
-	log.Infof("Starting application: %s", appName)
+	log.Info("Starting application")
 
 	// Viper default values to conf parameters when config file doesn't have it
 	// The config file values overrides these
@@ -347,7 +339,7 @@ func main() {
 	}
 	log.Warn("Database connections closed")
 
-	log.Warnf("Application %s stopped", appName)
+	log.Warn("Application stopped")
 }
 
 // ListenOSSignals is a functions that
@@ -362,7 +354,7 @@ func ListenOSSignals(osSignal *chan bool) {
 		signal.Notify(osSignals, syscall.SIGINT)
 		signal.Notify(osSignals, syscall.SIGQUIT)
 
-		log.Info("listening Operating System signals")
+		log.Info("Listening Operating System signals")
 		sig := <-osSignals // This go routine is blocked here until receive a OS Signal
 		log.Warnf("Received signal %s from Operating System", sig)
 

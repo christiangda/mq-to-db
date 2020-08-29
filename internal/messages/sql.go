@@ -3,7 +3,7 @@ package messages
 import (
 	"encoding/json"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/christiangda/mq-to-db/internal/logger"
 
 	"gopkg.in/yaml.v3"
 )
