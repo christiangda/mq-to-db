@@ -66,5 +66,5 @@ database:
   maxQueryTimeOut: 10s
   connMaxLifetime: 0
   maxIdleConns: 5
-  maxOpenConns: 20
+  maxOpenConns: 40
 ```

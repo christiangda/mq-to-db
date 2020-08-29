@@ -54,17 +54,10 @@ func New(c *config.Config) (storage.Store, error) {
 // or returning an existing connection from the connection pool.
 func (c *pgsqlConf) Connect(ctx context.Context) error {
 
-	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
-	defer cancel()
-
 	conn, err := c.pool.Conn(ctx)
 	c.conn = conn
 	//defer conn.Close()
 
-	if ctx.Err() == context.DeadlineExceeded {
-		log.Warnf("Connection time out (%v)", c.maxPingTimeOut)
-		err = ctx.Err()
-	}
 	return err
 }
 

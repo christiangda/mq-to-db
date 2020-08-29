@@ -279,7 +279,12 @@ func main() {
 					out <- m
 				case <-ctx.Done():
 					log.Warnf("Stoping consumer: %s", id)
-					qc.Close()
+
+					// closes the consumer queue and connection
+					go func() {
+						qc.Close()
+					}()
+
 					return
 				}
 			}
@@ -310,8 +315,8 @@ func main() {
 
 	// ********************************************
 
+	// Block the main function here until we receive OS signals
 	<-osSignal
-	log.Warn("Stoping workers...")
 
 	// call context cancellation
 	log.Warn("Executing context cancellation, gracefully shutdown")
@@ -320,7 +325,7 @@ func main() {
 	// Closes sockets
 	log.Warn("Closing Consumer connections")
 	if err := qc.Close(); err != nil {
-		log.Error(err)
+		log.Warnf("Consumer connections was closed previously: %s", err)
 	}
 	log.Warn("Consumer connections closed")
 
