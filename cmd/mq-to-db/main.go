@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -39,9 +40,8 @@ const (
 var (
 	conf config.Config
 
-	log        *logrus.Entry
-	rootLogger = logrus.New()
-	v          = viper.New()
+	log = logrus.New()
+	v   = viper.New()
 )
 
 func init() { // package initializer
@@ -98,29 +98,28 @@ func init() { // package initializer
 	// Use logrus for standard log output
 	// Note that `log` here references stdlib's log
 	// Not logrus imported under the name `log`.
-	rootLogger.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 
 	// Logs conf
 	if strings.ToLower(conf.Server.LogFormat) == "json" {
-		rootLogger.SetFormatter(&logrus.JSONFormatter{})
+		log.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		rootLogger.SetFormatter(&logrus.TextFormatter{})
+		log.SetFormatter(&logrus.TextFormatter{})
 	}
 
 	if conf.Server.Debug {
-		rootLogger.SetLevel(logrus.DebugLevel)
+		log.SetLevel(logrus.DebugLevel)
 	} else {
-		rootLogger.SetLevel(logrus.InfoLevel)
+		log.SetLevel(logrus.InfoLevel)
 	}
 
 	host, _ := os.Hostname()
-	log = rootLogger.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{
 		"app":  appName,
 		"host": host,
 	})
 
 	log.Info("Application initialized")
-
 }
 
 func main() {
@@ -286,9 +285,14 @@ func main() {
 					log.Warnf("Stoping consumer: %s", id)
 
 					// closes the consumer queue and connection
+					var wg sync.WaitGroup
+					wg.Add(1)
 					go func() {
 						qc.Close()
+						wg.Done()
 					}()
+					wg.Wait()
+
 					return // go out of the for loop
 				}
 			}
