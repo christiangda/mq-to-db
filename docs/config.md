@@ -26,7 +26,7 @@ The config file [config-sample.yaml](/config-sample.yaml) could be used as templ
 ---
 dispatcher:
   consumerConcurrency: 4 # Number of go routines consuming messages from Queue
-  storageWorkers: 30  # Number of go routines processing the messages received from consumers and sending messages to storage
+  storageWorkers: 40  # Number of go routines processing the messages received from consumers and sending messages to storage
 
 consumer:
   kind: rabbitmq
@@ -47,7 +47,7 @@ consumer:
       x-message-ttl: 180000
       x-dead-letter-exchange: retry.exchange
   exchange:
-    name: my.exchage
+    name: my.exchange
     type: topic
     durable: true
     autoDelete: false
@@ -66,5 +66,5 @@ database:
   maxQueryTimeOut: 10s
   connMaxLifetime: 0
   maxIdleConns: 5
-  maxOpenConns: 40
+  maxOpenConns: 41
 ```
