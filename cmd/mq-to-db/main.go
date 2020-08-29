@@ -44,7 +44,7 @@ var (
 	v          = viper.New()
 )
 
-func init() { //package initializer
+func init() { // package initializer
 
 	// Set default values
 	conf.Application.Name = appName
@@ -125,7 +125,7 @@ func init() { //package initializer
 
 func main() {
 
-	log.Infof("Starting...")
+	log.Infof("Starting application: %s", appName)
 
 	// Viper default values to conf parameters when config file doesn't have it
 	// The config file values overrides these
@@ -261,11 +261,13 @@ func main() {
 	// Start Consumers
 	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
 	for i := 1; i <= conf.Dispatcher.ConsumerConcurrency; i++ {
+
 		// ids for consumers
 		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
 
 		go func(ctx context.Context, id string, qc consumer.Consumer, out chan<- consumer.Messages) {
 
+			// reading from message queue
 			msgs, err := qc.Consume(id)
 			if err != nil {
 				log.Error(err)
@@ -273,10 +275,13 @@ func main() {
 
 			log.Infof("Starting consumer: %s", id)
 
+			// infinite loop for dispatch the messages read to the channel consummed from storage workers
 			for {
 				select {
+
 				case m := <-msgs:
 					out <- m
+
 				case <-ctx.Done():
 					log.Warnf("Stoping consumer: %s", id)
 
@@ -284,8 +289,7 @@ func main() {
 					go func() {
 						qc.Close()
 					}()
-
-					return
+					return // go out of the for loop
 				}
 			}
 		}(appCtx, id, qc, msgsChan)
@@ -294,23 +298,28 @@ func main() {
 	// Start storage workers
 	log.Infof("Starting storage workers: %d", conf.Dispatcher.StorageWorkers)
 	for i := 1; i <= conf.Dispatcher.StorageWorkers; i++ {
+
 		// ids for storage workers
 		id := fmt.Sprintf("%s-storage-worker-%d", conf.Application.Name, i)
 
-		go func(ctx context.Context, id string, msgs <-chan consumer.Messages, st storage.Store) {
+		go func(ctx context.Context, id string, st storage.Store, msgs <-chan consumer.Messages) {
 
 			log.Infof("Starting storage worker: %s", id)
 
 			for {
 				select {
+
 				case m := <-msgs:
-					messagesProcessor(ctx, m, st)
+					messagesProcessor(ctx, m, st) // proccess and storage message into db
+
 				case <-ctx.Done():
 					log.Warnf("Stoping storage worker: %s", id)
-					return
+					return // go out of the for loop
+
 				}
 			}
-		}(appCtx, id, msgsChan, db)
+
+		}(appCtx, id, db, msgsChan)
 	}
 
 	// ********************************************
@@ -334,11 +343,13 @@ func main() {
 		log.Error(err)
 	}
 	log.Warn("Database connections closed")
+
+	log.Warnf("Application %s stopped", appName)
 }
 
 // ListenOSSignals is a functions that
 // start a go routine to listen Operating System Signals
-// When some signals are received, it put a value inside channel done
+// When a signal is received, it put a value inside channel done
 // to notify main routine to close
 func ListenOSSignals(osSignal *chan bool) {
 	go func(osSignal *chan bool) {
@@ -349,7 +360,7 @@ func ListenOSSignals(osSignal *chan bool) {
 		signal.Notify(osSignals, syscall.SIGQUIT)
 
 		log.Info("listening Operating System signals")
-		sig := <-osSignals
+		sig := <-osSignals // This go routine is blocked here until receive a OS Signal
 		log.Warnf("Received signal %s from Operating System", sig)
 
 		// Notify main routine shutdown is done
