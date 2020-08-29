@@ -254,12 +254,35 @@ func main() {
 	// Logic of channels for consumer and for storage
 	// ********************************************
 
-	// This define the sign of a consumer function
-	type consumerFunction func(ctx context.Context, id string, c consumer.Consumer) <-chan consumer.Messages
-
 	// where the consumers will put the messages
-	//msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
 	msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
+
+	// Start Consumers
+	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
+	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
+		// ids for consumers
+		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
+
+		go func(ctx context.Context, id string, c consumer.Consumer, qc consumer.Consumer, out chan<- consumer.Messages) {
+
+			msgs, err := qc.Consume(id)
+			if err != nil {
+				log.Error(err)
+			}
+
+			log.Infof("Starting consumer: %s", id)
+
+			for {
+				select {
+				case m := <-msgs:
+					out <- m
+				case <-ctx.Done():
+					log.Warnf("Stoping consumer: %s", id)
+					return
+				}
+			}
+		}(appCtx, id, qc, qc, msgsChan)
+	}
 
 	// Start storage workers
 	log.Infof("Starting storage workers: %d", conf.Dispatcher.StorageWorkers)
@@ -281,28 +304,6 @@ func main() {
 				}
 			}
 		}(appCtx, id, msgsChan, db)
-	}
-
-	// Start Consumers
-	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
-	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
-		// ids for consumers
-		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
-
-		go func(ctx context.Context, id string, c consumer.Consumer) {
-
-			log.Infof("Starting consumer: %s", id)
-
-			for {
-				select {
-				case msgs := <-messagesConsumer(appCtx, id, c):
-					msgsChan <- msgs
-				case <-ctx.Done():
-					log.Warnf("Stoping consumer: %s", id)
-					return
-				}
-			}
-		}(appCtx, id, qc)
 	}
 
 	// ********************************************
@@ -349,27 +350,21 @@ func ListenOSSignals(osSignal *chan bool) {
 	}(osSignal)
 }
 
-func messagesConsumer(ctx context.Context, id string, c consumer.Consumer) <-chan consumer.Messages {
-
-	msgs, err := c.Consume(id)
-	if err != nil {
-		log.Errorf("Error consuming, channel is closed, worker id: %s", id)
-	}
-
-	return msgs
-}
-
+// This function is in charge of process the message extracted from the queue system,
+// and once guaranteed this message was stored into the database this function sends the ACK
+// of the message to the message queue
 func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Store) {
 
 	log.Debugf("Processing message: %s", m.Payload)
 
 	sqlm, err := messages.NewSQL(m.Payload)
 	if err != nil {
-		log.Errorf("Error creating SQL type: %s, the message will be rejected", err)
+		log.Errorf("Error creating SQL type: %s", err)
 
 		if err := m.Reject(false); err != nil {
 			log.Errorf("Error rejecting message: %v", err)
 		}
+		log.Debugf("Message: %s left in the queue", m.Payload)
 	} else {
 		// we use else sentences because we cannot broke the flow of execution (only logs), so
 		// sqlm if fine here.
@@ -379,11 +374,12 @@ func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Stor
 		// The result isn't used
 		res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
 		if err != nil {
-			log.Errorf("Error executing SQL sentence: %v, the message will be rejected", err)
+			log.Errorf("Error executing SQL sentence: %v", err)
 
 			if err := m.Reject(false); err != nil {
 				log.Errorf("Error rejecting message: %v", err)
 			}
+			log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
 		} else {
 			// we use else sentences because we cannot broke the flow of execution (only logs), so
 			// ExecContext was fine
@@ -396,11 +392,12 @@ func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Stor
 
 			log.Debugf("Ack the message: %s", sqlm.ToJSON())
 			if err := m.Ack(); err != nil {
-				log.Errorf("Error ack on message: %v, the message will be rejected", err)
+				log.Errorf("Error ack on message: %v", err)
 
 				if err := m.Reject(false); err != nil {
 					log.Errorf("Error rejecting message: %v", err)
 				}
+				log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
 			}
 		}
 	}
