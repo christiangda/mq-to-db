@@ -260,7 +260,7 @@ func main() {
 
 	// Start Consumers
 	log.Infof("Starting consumers: %d", conf.Dispatcher.ConsumerConcurrency)
-	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
+	for i := 1; i <= conf.Dispatcher.ConsumerConcurrency; i++ {
 		// ids for consumers
 		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
 
@@ -293,7 +293,7 @@ func main() {
 
 	// Start storage workers
 	log.Infof("Starting storage workers: %d", conf.Dispatcher.StorageWorkers)
-	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
+	for i := 1; i <= conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-storage-worker-%d", conf.Application.Name, i)
 
