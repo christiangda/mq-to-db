@@ -15,6 +15,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
+	"github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
@@ -114,10 +115,7 @@ func init() { // package initializer
 	}
 
 	host, _ := os.Hostname()
-	log.WithFields(logrus.Fields{
-		"app":  appName,
-		"host": host,
-	})
+	log.AddHook(logger.NewGlobalFieldsHook(appName, host, conf.Application.Version))
 
 	log.Info("Application initialized")
 }
