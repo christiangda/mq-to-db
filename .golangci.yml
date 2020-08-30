@@ -1,0 +1,28 @@
+
+run:
+  deadline: 5m
+
+linters:
+  enable:
+  - depguard
+  - golint
+  - gofmt
+  - govet
+
+issues:
+  exclude-rules:
+  - path: _test.go
+    linters:
+    - errcheck
+
+linters-settings:
+  depguard:
+    list-type: blacklist
+    include-go-root: true
+    packages:
+      - sync/atomic
+    packages-with-error-message:
+      - sync/atomic: "Use go.uber.org/atomic instead of sync/atomic"
+  govet:
+    # report about shadowed variables
+    check-shadowing: true
