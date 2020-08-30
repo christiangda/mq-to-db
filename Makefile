@@ -20,6 +20,7 @@ GO_HOST_ARCH     ?= $(shell $(GO) env GOHOSTARCH)
 GO_OS            ?= linux
 GO_ARCH          ?= amd64
 GO_VENDOR_FOLDER ?= ./vendor
+GO_PKGS_PATH     ?= ./...
 GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(GIT_VERSION) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(GIT_REVISION) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(GIT_BRANCH) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(GIT_USER)\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(BUILD_DATE)"
 
 # Container
@@ -75,6 +76,7 @@ endif
 .PHONY: go-test
 go-test:
 	@echo "--> Test"
+	$(GO_TEST) $(GO_OPTS) $(GO_PKGS_PATH)
 
 .PHONY: clean
 clean:
