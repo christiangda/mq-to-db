@@ -22,19 +22,19 @@ func init() {
 
 // GlobalFieldsHook is a structure used with logrus to add fixed global field to every log line
 type GlobalFieldsHook struct {
-	app     string
-	host    string
-	version string
-	pid     int
+	app        string
+	appHost    string
+	appVersion string
+	appPID     int
 }
 
 // NewGlobalFieldsHook is a constructor for
-func NewGlobalFieldsHook(app, host, version string) *GlobalFieldsHook {
+func NewGlobalFieldsHook(app, appHost, appVersion string) *GlobalFieldsHook {
 	return &GlobalFieldsHook{
-		app:     app,
-		host:    host,
-		version: version,
-		pid:     os.Getpid(),
+		app:        app,
+		appHost:    appHost,
+		appVersion: appVersion,
+		appPID:     os.Getpid(),
 	}
 }
 
@@ -46,9 +46,9 @@ func (g *GlobalFieldsHook) Levels() []logrus.Level {
 // Fire implement
 func (g *GlobalFieldsHook) Fire(entry *logrus.Entry) error {
 	entry.Data["app"] = g.app
-	entry.Data["host"] = g.host
-	entry.Data["version"] = g.version
-	entry.Data["pid"] = g.pid
+	entry.Data["appHost"] = g.appHost
+	entry.Data["appVersion"] = g.appVersion
+	entry.Data["appPid"] = g.appPID
 	return nil
 }
 

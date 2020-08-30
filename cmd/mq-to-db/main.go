@@ -40,14 +40,14 @@ const (
 )
 
 var (
-	host string
-	conf config.Config
-	v    = viper.New()
+	appHost string
+	conf    config.Config
+	v       = viper.New()
 )
 
 func init() { // package initializer
-	host, _ = os.Hostname()
-	log.AddHook(logger.NewGlobalFieldsHook(appName, host, conf.Application.Version))
+	appHost, _ = os.Hostname()
+	log.AddHook(logger.NewGlobalFieldsHook(appName, appHost, conf.Application.Version))
 
 	// Set default values
 	conf.Application.Name = appName
@@ -235,15 +235,25 @@ func main() {
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
-		log.Fatal("Error connecting to database")
+		log.WithFields(logrus.Fields{
+			"server": conf.Database.Address,
+			"port":   conf.Database.Port,
+		}).Fatal("Error connecting to database server")
 	}
 
 	// Try to connect to queue consumer
-	log.Infof("Connecting to consumer")
-	qc.Connect()
+	log.Infof("Connecting to queue")
+	if err := qc.Connect(); err != nil {
+		log.WithFields(logrus.Fields{
+			"server":   conf.Consumer.Address,
+			"port":     conf.Consumer.Port,
+			"queue":    conf.Consumer.Queue.Name,
+			"exchange": conf.Consumer.Exchange.Name,
+		}).Fatal("Error connecting to queue server")
+	}
 
 	// Logic of channels for consumer and for storage
-	// it is a go model of pipeline
+	// it is a go pipeline model https://blog.golang.org/pipelines
 	// ********************************************
 
 	// where the consumers will put the chan of consumer.Messages
@@ -257,7 +267,7 @@ func main() {
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
 		// ids for consumers
-		id := fmt.Sprintf("%s-%s-consumer-%d", host, conf.Application.Name, i)
+		id := fmt.Sprintf("%s-%s-consumer-%d", appHost, conf.Application.Name, i)
 		sliceChanMessages[i] = messageConsumer(appCtx, id, qc)
 	}
 
@@ -268,8 +278,8 @@ func main() {
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
-		id := fmt.Sprintf("%s-%s-storage-worker-%d", host, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, db)
+		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, db, messageStorer)
 	}
 
 	// ********************************************
@@ -419,7 +429,7 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 }
 
 // This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storage.Store) <-chan string {
+func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storage.Store, storer func(ctx context.Context, m consumer.Messages, st storage.Store)) <-chan string {
 	out := make(chan string)
 	go func() {
 		defer close(out)
@@ -431,7 +441,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 			select {
 
 			case m := <-chanMsgs:
-				messageStorer(ctx, m, st) // proccess and storage message into db
+				storer(ctx, m, st) // proccess and storage message into db
 
 			case <-ctx.Done(): // When main routine cancel
 

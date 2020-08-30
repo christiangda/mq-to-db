@@ -6,7 +6,6 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/streadway/amqp"
 )
 
@@ -83,7 +82,7 @@ func New(c *config.Config) (consumer.Consumer, error) {
 }
 
 // Connect to RabbitMQ server and channel
-func (c *Consumer) Connect() {
+func (c *Consumer) Connect() error {
 
 	amqpConfig := amqp.Config{}
 
@@ -92,26 +91,23 @@ func (c *Consumer) Connect() {
 		amqpConfig.Vhost = c.virtualHost
 	}
 
-	log.Debugf("Connecting to: %s", c.uri)
 	conn, err := amqp.DialConfig(
 		c.uri,
 		amqpConfig,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	//defer conn.Close()
 	c.conn = conn
 
-	log.Debug("Getting Channel")
 	ch, err := c.conn.Channel()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	//defer ch.Close()
 	c.channel = ch
 
-	log.Debugf("Declaring channel exchange: %s", c.exchange.name)
 	err = c.channel.ExchangeDeclare(
 		c.exchange.name,
 		c.exchange.kind,
@@ -122,10 +118,9 @@ func (c *Consumer) Connect() {
 		c.exchange.args,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	log.Debugf("Declaring channel queue: %s", c.queue.name)
 	q, err := c.channel.QueueDeclare(
 		c.queue.name,
 		c.queue.durable,
@@ -135,10 +130,9 @@ func (c *Consumer) Connect() {
 		c.queue.args,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	log.Debugf("Binding queue: %s to exchange: %s using routing key: %s", q.Name, c.exchange.name, c.queue.routingKey)
 	err = c.channel.QueueBind(
 		q.Name,
 		c.queue.routingKey,
@@ -147,11 +141,13 @@ func (c *Consumer) Connect() {
 		nil,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
-// Consume messages from the channel
+// Consume messages from the queue channel
 func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 
 	// Register a consumer

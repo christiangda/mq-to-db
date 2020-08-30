@@ -11,7 +11,7 @@ import (
 
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {
-	Connect()
+	Connect() error
 	Consume(id string) (<-chan Messages, error)
 	Close() error
 }
