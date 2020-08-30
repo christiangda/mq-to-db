@@ -167,8 +167,8 @@ __NOTES__ related to make
 
 ### Concurrency
 
-* [https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be](https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be)
 * [https://blog.golang.org/pipelines](https://blog.golang.org/pipelines)
+* [https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be](https://www.youtube.com/watch?v=5zXAHh5tJqQ&feature=youtu.be)
 * [https://www.goin5minutes.com/blog/channel_over_channel/](https://www.goin5minutes.com/blog/channel_over_channel/)
 * [https://go101.org/article/channel-use-cases.html](https://go101.org/article/channel-use-cases.html)
 
@@ -177,3 +177,4 @@ __NOTES__ related to make
 * [https://www.prakharsrivastav.com/posts/golang-concurrent-worker-pool/](https://www.prakharsrivastav.com/posts/golang-concurrent-worker-pool/)
 * [https://brandur.org/go-worker-pool](https://brandur.org/go-worker-pool)
 * [https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/](https://maptiks.com/blog/using-go-routines-and-channels-with-aws-2/)
+* [o'reilly concurrency in go book](https://learning.oreilly.com/library/view/concurrency-in-go/9781491941294/#:~:text=Book%20description&text=If%20you're%20a%20developer,by%2Dstep%20through%20the%20process.)

@@ -40,12 +40,13 @@ const (
 )
 
 var (
+	host string
 	conf config.Config
 	v    = viper.New()
 )
 
 func init() { // package initializer
-	host, _ := os.Hostname()
+	host, _ = os.Hostname()
 	log.AddHook(logger.NewGlobalFieldsHook(appName, host, conf.Application.Version))
 
 	// Set default values
@@ -242,79 +243,33 @@ func main() {
 	qc.Connect()
 
 	// Logic of channels for consumer and for storage
+	// it is a go model of pipeline
 	// ********************************************
 
-	// where the consumers will put the messages
-	// this channel is used to comunicate consumers and storage workers
-	msgsChan := make(chan consumer.Messages, conf.Dispatcher.StorageWorkers)
+	// where the consumers will put the chan of consumer.Messages
+	// this slice of channels (consumer.Messages) is used to comunicate consumers and storage workers
+	// but first every consumer generate a <-chan consumer.Messages witch need to me merge in only
+	// one channel before be ready to consume
+	sliceChanMessages := make([]<-chan consumer.Messages, conf.Dispatcher.ConsumerConcurrency)
+	sliceChanStorageWorkers := make([]<-chan string, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
-	for i := 1; i <= conf.Dispatcher.ConsumerConcurrency; i++ {
-
+	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
 		// ids for consumers
-		id := fmt.Sprintf("%s-consumer-%d", conf.Application.Name, i)
-
-		go func(ctx context.Context, id string, qc consumer.Consumer, out chan<- consumer.Messages) {
-
-			// reading from message queue
-			msgs, err := qc.Consume(id)
-			if err != nil {
-				log.Error(err)
-			}
-
-			log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
-
-			// infinite loop for dispatch the messages read to the channel consummed from storage workers
-			for {
-				select {
-
-				case m := <-msgs:
-					out <- m
-
-				case <-ctx.Done():
-					log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
-
-					// closes the consumer queue and connection
-					var wg sync.WaitGroup
-					wg.Add(1)
-					go func() {
-						qc.Close()
-						wg.Done()
-					}()
-					wg.Wait()
-
-					return // go out of the for loop
-				}
-			}
-		}(appCtx, id, qc, msgsChan)
+		id := fmt.Sprintf("%s-%s-consumer-%d", host, conf.Application.Name, i)
+		sliceChanMessages[i] = messageConsumer(appCtx, id, qc)
 	}
+
+	// Merge all channels from consumers in only one channel of type <-chan consumer.Messages
+	chanMsgs := mergeMsgsChan(appCtx, sliceChanMessages...)
 
 	// Start storage workers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
-	for i := 1; i <= conf.Dispatcher.StorageWorkers; i++ {
-
+	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
-		id := fmt.Sprintf("%s-storage-worker-%d", conf.Application.Name, i)
-
-		go func(ctx context.Context, id string, st storage.Store, msgs <-chan consumer.Messages) {
-
-			log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
-
-			for {
-				select {
-
-				case m := <-msgs:
-					messagesProcessor(ctx, m, st) // proccess and storage message into db
-
-				case <-ctx.Done():
-					log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
-					return // go out of the for loop
-
-				}
-			}
-
-		}(appCtx, id, db, msgsChan)
+		id := fmt.Sprintf("%s-%s-storage-worker-%d", host, conf.Application.Name, i)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, db)
 	}
 
 	// ********************************************
@@ -366,7 +321,7 @@ func ListenOSSignals(osSignal *chan bool) {
 // This function is in charge of process the message extracted from the queue system,
 // and once guaranteed this message was stored into the database this function sends the ACK
 // of the message to the message queue
-func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Store) {
+func messageStorer(ctx context.Context, m consumer.Messages, st storage.Store) {
 
 	log.Debugf("Processing message: %s", m.Payload)
 
@@ -414,4 +369,110 @@ func messagesProcessor(ctx context.Context, m consumer.Messages, st storage.Stor
 			}
 		}
 	}
+}
+
+// This function consume messages from queue system and return the messages as a channel of them
+func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-chan consumer.Messages {
+	out := make(chan consumer.Messages)
+	go func() {
+		defer close(out)
+
+		log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
+
+		// reading from message queue
+		msgs, err := qc.Consume(id)
+		if err != nil {
+			log.Error(err)
+		}
+
+		// loop to dispatch the messages read to the channel consummed from storage workers
+		for m := range msgs {
+			select {
+
+			case out <- m: // put messages consumed into the out chan
+			case <-ctx.Done(): // When main routine cancel
+
+				log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
+				// closes the consumer queue and connection
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					qc.Close() // TODO: Close the consumer connection not the mq connection
+					wg.Done()
+				}()
+				wg.Wait()
+
+				return // go out of the for loop
+			}
+		}
+	}()
+
+	return out
+}
+
+// This function consume messages from queue system and return the messages as a channel of them
+func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storage.Store) <-chan string {
+	out := make(chan string)
+	go func() {
+		defer close(out)
+
+		log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
+
+		// loop to dispatch the messages read to the channel consummed from storage workers
+		for {
+			select {
+
+			case m := <-chanMsgs:
+				messageStorer(ctx, m, st) // proccess and storage message into db
+
+			case <-ctx.Done(): // When main routine cancel
+
+				log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
+				// closes the consumer queue and connection
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					st.Close() // TODO: call leave connection, not close the database connection
+					wg.Done()
+				}()
+				wg.Wait()
+
+				return // go out of the for loop
+			}
+		}
+	}()
+
+	return out
+}
+
+// this function merge all the channels data receive as slice of channels and return a merged channel with the data
+func mergeMsgsChan(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
+	var wg sync.WaitGroup
+	out := make(chan consumer.Messages)
+
+	// internal function to merge channels in only one
+	multiplex := func(channel <-chan consumer.Messages) {
+		defer wg.Done()
+		for ch := range channel {
+			select {
+			case out <- ch:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	// one routine per every channel in channels arg
+	wg.Add(len(channels))
+	for _, ch := range channels {
+		go multiplex(ch)
+	}
+
+	// waiting until fished every go multiplex(ch)
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out
 }
