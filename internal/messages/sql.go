@@ -35,6 +35,16 @@ func NewSQL(m []byte) (*SQL, error) {
 	return out, nil
 }
 
+// ValidDataConn return true if the internal message Content data is valid
+// Server, DB, User and Pass any is empty
+func (m *SQL) ValidDataConn() bool {
+	return ((m.Content.Server != "") &&
+		(m.Content.DB != "") &&
+		(m.Content.User != "") &&
+		(m.Content.Pass != ""))
+
+}
+
 // ToJSON export the SQL in JSON format
 func (m *SQL) ToJSON() string {
 	out, err := json.Marshal(m)

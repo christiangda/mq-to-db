@@ -52,35 +52,85 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	sqlm, err := messages.NewSQL(m.Payload) // serialize message payload as SQL message type
 	if err != nil {
 		if err := m.Reject(false); err != nil {
-			return Results{Error: err, Content: m.MessageID, Reason: "Impossible to serialize message to SQL type and reject the message from queue system"}
+			return Results{
+				Error:   err,
+				Content: m.MessageID,
+				Reason:  "Impossible to serialize message to SQL type and reject the message from queue system",
+			}
 		}
-		return Results{Error: err, Content: m.Payload, Reason: "Impossible to serialize message to SQL type"}
+		return Results{
+			Error:   err,
+			Content: m.Payload,
+			Reason:  "Impossible to serialize message to SQL type",
+		}
 	}
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
 
+	// here could be impelmented the use of database connection inside of SQL Message
+	// var result sql.Result
+	// var err error
+	// if sqlm.ValidDataConn() {
+	// 	// create database connection
+	// 	conf := &config.Config{
+	// 		Server:   sqlm.Content.Server,
+	// 		Database: sqlm.Content.DB,
+	// 	}
+	// 	db, err = pgsql.New(&conf)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+
+	// } else {
+	// 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
+	// }
+
 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
 	if err != nil {
 		if err := m.Reject(false); err != nil {
-			return Results{Error: err, Content: m.MessageID, Reason: "Impossible to execute sentence into database and reject the message from queue system"}
+			return Results{
+				Error:   err,
+				Content: m.MessageID,
+				Reason:  "Impossible to execute sentence into database and reject the message from queue system",
+			}
 		}
-		return Results{Error: err, Content: sqlm.Content.Sentence, Reason: "Impossible to execute sentence into database"}
+		return Results{
+			Error:   err,
+			Content: sqlm.Content.Sentence,
+			Reason:  "Impossible to execute sentence into database",
+		}
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err := m.Reject(false); err != nil {
-			return Results{Error: err, Content: m.MessageID, Reason: "Impossible get result from database and reject the message from queue system"}
+			return Results{
+				Error:   err,
+				Content: m.MessageID,
+				Reason:  "Impossible get result from database and reject the message from queue system",
+			}
 		}
-		return Results{Error: err, Content: sqlm.Content.Sentence, Reason: "Impossible get result from database"}
+		return Results{
+			Error:   err,
+			Content: sqlm.Content.Sentence,
+			Reason:  "Impossible get result from database",
+		}
 	}
 	log.Debugf("SQL Execution return: %v", rows)
 
 	if err := m.Ack(); err != nil {
 		if err := m.Reject(false); err != nil {
-			return Results{Error: err, Content: m.MessageID, Reason: "Impossible execute ack and reject the message from queue system"}
+			return Results{
+				Error:   err,
+				Content: m.MessageID,
+				Reason:  "Impossible execute ack and reject the message from queue system",
+			}
 		}
-		return Results{Error: err, Content: sqlm.Content.Sentence, Reason: "Impossible execute ack into the queue system"}
+		return Results{
+			Error:   err,
+			Content: sqlm.Content.Sentence,
+			Reason:  "Impossible execute ack into the queue system",
+		}
 	}
 	log.Debugf("Ack the message: %s", sqlm.ToJSON())
 
