@@ -1,9 +1,20 @@
 # mq-to-db
 
-Read from Message Queue System and Store into Database
+This is a [Golang (go)](https://golang.org/) program to read from a Message Queue System and Store into Database using concurrency as you can see into the image below
+
+![mq-to-db](images/nxconsumers-mxworkers.jpg)
+
+## Consumers supported
+
+* [RabbitMQ](https://www.rabbitmq.com/)
+
+## Storage supported
+
+* [PostgreSQL](https://www.postgresql.org/)
 
 ## Characteristics
 
+* The number of consumers could be different from the numbers of workers
 * The process (job) of consume one message from queue and store into the database is synchronous because every message needs to be acknowledge (confirm as storage).
 
 ## How to execute
