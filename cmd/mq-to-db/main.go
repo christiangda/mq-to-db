@@ -17,10 +17,10 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/logger"
 	log "github.com/christiangda/mq-to-db/internal/logger"
-	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
+	"github.com/christiangda/mq-to-db/internal/storer"
 
 	"os"
 	"strings"
@@ -252,16 +252,22 @@ func main() {
 		}).Fatal("Error connecting to queue server")
 	}
 
+	// storer to called it every time we need to store a consumer.Message into the database
+	strer := storer.New(appCtx, db)
+
 	// Logic of channels for consumer and for storage
 	// it is a go pipeline model https://blog.golang.org/pipelines
 	// ********************************************
 
+	// slice of consumers
 	// where the consumers will put the chan of consumer.Messages
 	// this slice of channels (consumer.Messages) is used to comunicate consumers and storage workers
 	// but first every consumer generate a <-chan consumer.Messages witch need to me merge in only
 	// one channel before be ready to consume
 	sliceChanMessages := make([]<-chan consumer.Messages, conf.Dispatcher.ConsumerConcurrency)
-	sliceChanStorageWorkers := make([]<-chan string, conf.Dispatcher.StorageWorkers)
+
+	// Slice of workers
+	sliceChanStorageWorkers := make([]<-chan storer.Results, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
@@ -279,8 +285,18 @@ func main() {
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, db, messageStorer)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, strer)
 	}
+
+	chanResults := mergeResultsChan(appCtx, sliceChanStorageWorkers...)
+
+	go func() {
+		for r := range chanResults {
+			if r.Error != nil {
+				log.Errorf("Results: %s", r.ToJSON())
+			}
+		}
+	}()
 
 	// ********************************************
 
@@ -328,67 +344,6 @@ func ListenOSSignals(osSignal *chan bool) {
 	}(osSignal)
 }
 
-// This function is in charge of process the message extracted from the queue system,
-// and once guaranteed this message was stored into the database this function sends the ACK
-// of the message to the message queue
-func messageStorer(ctx context.Context, m consumer.Messages, st storage.Store) {
-
-	log.Debugf("Processing message: %s", m.Payload)
-
-	sqlm, err := messages.NewSQL(m.Payload)
-	if err != nil {
-		log.Errorf("Error creating SQL type: %s", err)
-
-		if err := m.Reject(false); err != nil {
-			log.Errorf("Error rejecting message: %v", err)
-		}
-		log.Debugf("Message: %s left in the queue", m.Payload)
-	} else {
-		// we use else sentences because we cannot broke the flow of execution (only logs), so
-		// sqlm if fine here.
-
-		log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-
-		// The result isn't used
-		res, err := st.ExecContext(ctx, sqlm.Content.Sentence)
-		if err != nil {
-			log.Errorf("Error executing SQL sentence: %v", err)
-
-			if err := m.Reject(false); err != nil {
-				log.Errorf("Error rejecting message: %v", err)
-			}
-			log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
-		} else {
-			// we use else sentences because we cannot broke the flow of execution (only logs), so
-			// ExecContext was fine
-
-			rows, err := res.RowsAffected()
-			if err != nil {
-				log.Error(err)
-
-				if err := m.Reject(false); err != nil {
-					log.Errorf("Error rejecting message: %v", err)
-				}
-				log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
-			} else {
-				// we use else sentences because we cannot broke the flow of execution (only logs), so
-				// RowsAffected was fine
-
-				log.Debugf("SQL Execution return: %v", rows)
-				log.Debugf("Ack the message: %s", sqlm.ToJSON())
-				if err := m.Ack(); err != nil {
-					log.Errorf("Error ack on message: %v", err)
-
-					if err := m.Reject(false); err != nil {
-						log.Errorf("Error rejecting message: %v", err)
-					}
-					log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
-				}
-			}
-		}
-	}
-}
-
 // This function consume messages from queue system and return the messages as a channel of them
 func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-chan consumer.Messages {
 	out := make(chan consumer.Messages)
@@ -429,8 +384,8 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 }
 
 // This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storage.Store, storer func(ctx context.Context, m consumer.Messages, st storage.Store)) <-chan string {
-	out := make(chan string)
+func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storer.Storer) <-chan storer.Results {
+	out := make(chan storer.Results)
 	go func() {
 		defer close(out)
 
@@ -441,7 +396,9 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 			select {
 
 			case m := <-chanMsgs:
-				storer(ctx, m, st) // proccess and storage message into db
+				r := st.Store(m) // proccess and storage message into db
+				r.By = id        // fill who execute it
+				out <- r
 
 			case <-ctx.Done(): // When main routine cancel
 
@@ -450,7 +407,6 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 				var wg sync.WaitGroup
 				wg.Add(1)
 				go func() {
-					st.Close() // TODO: call leave connection, not close the database connection
 					wg.Done()
 				}()
 				wg.Wait()
@@ -471,6 +427,39 @@ func mergeMsgsChan(ctx context.Context, channels ...<-chan consumer.Messages) <-
 
 	// internal function to merge channels in only one
 	multiplex := func(channel <-chan consumer.Messages) {
+		defer wg.Done()
+		for ch := range channel {
+			select {
+			case out <- ch:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	// one routine per every channel in channels arg
+	wg.Add(len(channels))
+	for _, ch := range channels {
+		go multiplex(ch)
+	}
+
+	// waiting until fished every go multiplex(ch)
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out
+}
+
+// mergeResultsChan merge all the channels of storer.Results in only one
+// bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
+func mergeResultsChan(ctx context.Context, channels ...<-chan storer.Results) <-chan storer.Results {
+	var wg sync.WaitGroup
+	out := make(chan storer.Results)
+
+	// internal function to merge channels in only one
+	multiplex := func(channel <-chan storer.Results) {
 		defer wg.Done()
 		for ch := range channel {
 			select {

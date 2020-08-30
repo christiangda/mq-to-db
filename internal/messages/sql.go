@@ -39,7 +39,7 @@ func NewSQL(m []byte) (*SQL, error) {
 func (m *SQL) ToJSON() string {
 	out, err := json.Marshal(m)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
 	}
 	return string(out)
 }
