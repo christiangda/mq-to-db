@@ -107,7 +107,7 @@ __NOTES__ related to make
 ### Free books
 
 * [https://www.openmymind.net/The-Little-Go-Book/](https://www.openmymind.net/The-Little-Go-Book/)
-* https://golang.org/doc/effective_go.html#generality
+* [https://golang.org/doc/effective_go.html#generality](https://golang.org/doc/effective_go.html#generality)
 * [https://golang.org/doc/code.html](https://golang.org/doc/code.html)
 
 ### Blogs
@@ -127,14 +127,14 @@ __NOTES__ related to make
 
 ### Interfaces
 
-* https://www.alexedwards.net/blog/interfaces-explained
-* https://golang.org/doc/effective_go.html#interfaces_and_types
+* [https://www.alexedwards.net/blog/interfaces-explained](https://www.alexedwards.net/blog/interfaces-explained)
+* [https://golang.org/doc/effective_go.html#interfaces_and_types](https://golang.org/doc/effective_go.html#interfaces_and_types)
 
 ### Context
 
 * [https://www.sohamkamani.com/golang/2018-06-17-golang-using-context-cancellation/](https://www.sohamkamani.com/golang/2018-06-17-golang-using-context-cancellation/)
 
-### YAML|JSON to Struct
+### YAML|JSON to Struts
 
 * [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml)
 * [https://www.sohamkamani.com/golang/2018-07-19-golang-omitempty/](https://www.sohamkamani.com/golang/2018-07-19-golang-omitempty/)
@@ -161,7 +161,7 @@ __NOTES__ related to make
 
 * [https://prometheus.io/docs/guides/go-application/](https://prometheus.io/docs/guides/go-application/)
 
-### Test
+### Tests
 
 * [https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/](https://www.sidorenko.io/post/2019/01/testing-of-functions-with-channels-in-go/)
 
