@@ -352,20 +352,28 @@ func messageStorer(ctx context.Context, m consumer.Messages, st storage.Store) {
 			// we use else sentences because we cannot broke the flow of execution (only logs), so
 			// ExecContext was fine
 
-			val, err := res.RowsAffected()
+			rows, err := res.RowsAffected()
 			if err != nil {
 				log.Error(err)
-			}
-			log.Debugf("SQL Execution return: %v", val)
-
-			log.Debugf("Ack the message: %s", sqlm.ToJSON())
-			if err := m.Ack(); err != nil {
-				log.Errorf("Error ack on message: %v", err)
 
 				if err := m.Reject(false); err != nil {
 					log.Errorf("Error rejecting message: %v", err)
 				}
 				log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
+			} else {
+				// we use else sentences because we cannot broke the flow of execution (only logs), so
+				// RowsAffected was fine
+
+				log.Debugf("SQL Execution return: %v", rows)
+				log.Debugf("Ack the message: %s", sqlm.ToJSON())
+				if err := m.Ack(); err != nil {
+					log.Errorf("Error ack on message: %v", err)
+
+					if err := m.Reject(false); err != nil {
+						log.Errorf("Error rejecting message: %v", err)
+					}
+					log.Debugf("Message: %s left in the queue", sqlm.ToJSON())
+				}
 			}
 		}
 	}
@@ -446,6 +454,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 }
 
 // this function merge all the channels data receive as slice of channels and return a merged channel with the data
+// bassically convert (...<-chan consumer.Messages) --> (<-chan consumer.Messages)
 func mergeMsgsChan(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
 	var wg sync.WaitGroup
 	out := make(chan consumer.Messages)
