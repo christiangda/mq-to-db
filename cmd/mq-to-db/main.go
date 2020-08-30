@@ -278,22 +278,26 @@ func main() {
 	}
 
 	// Merge all channels from consumers in only one channel of type <-chan consumer.Messages
-	chanMsgs := mergeMsgsChan(appCtx, sliceChanMessages...)
+	chanMessages := mergeMessagesChans(appCtx, sliceChanMessages...)
 
 	// Start storage workers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMsgs, strer)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
 	}
 
-	chanResults := mergeResultsChan(appCtx, sliceChanStorageWorkers...)
+	// Merge all channels from workers in only one channel of type <-chan storer.Results
+	chanResults := mergeResultsChans(appCtx, sliceChanStorageWorkers...)
 
+	// Listen result in different routine
 	go func() {
 		for r := range chanResults {
 			if r.Error != nil {
-				log.Errorf("Results: %s", r.ToJSON())
+				log.WithFields(logrus.Fields{
+					"worker": r.By,
+				}).Errorf("%s-%s", r.Reason, r.Error)
 			}
 		}
 	}()
@@ -421,7 +425,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 
 // this function merge all the channels data receive as slice of channels and return a merged channel with the data
 // bassically convert (...<-chan consumer.Messages) --> (<-chan consumer.Messages)
-func mergeMsgsChan(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
+func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
 	var wg sync.WaitGroup
 	out := make(chan consumer.Messages)
 
@@ -454,7 +458,7 @@ func mergeMsgsChan(ctx context.Context, channels ...<-chan consumer.Messages) <-
 
 // mergeResultsChan merge all the channels of storer.Results in only one
 // bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
-func mergeResultsChan(ctx context.Context, channels ...<-chan storer.Results) <-chan storer.Results {
+func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <-chan storer.Results {
 	var wg sync.WaitGroup
 	out := make(chan storer.Results)
 
