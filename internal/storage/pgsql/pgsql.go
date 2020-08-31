@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/christiangda/mq-to-db/internal/config"
 	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 )
 
-type pgsqlConf struct {
+type pgsql struct {
 	pool *sql.DB
 	conn *sql.Conn
 
@@ -21,15 +20,15 @@ type pgsqlConf struct {
 }
 
 // New return
-func New(c *config.Config) (storage.Store, error) {
+func New(c *storage.Config) (storage.Store, error) {
 
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Database.Address,
-		c.Database.Port,
-		c.Database.Username,
-		c.Database.Password,
-		c.Database.Database,
-		c.Database.SSLMode,
+		c.Address,
+		c.Port,
+		c.Username,
+		c.Password,
+		c.Database,
+		c.SSLMode,
 	)
 
 	pool, err := sql.Open("postgres", dsn)
@@ -38,21 +37,21 @@ func New(c *config.Config) (storage.Store, error) {
 	}
 	//defer pool.Close()
 
-	pool.SetConnMaxLifetime(c.Database.ConnMaxLifetime)
-	pool.SetMaxIdleConns(c.Database.MaxIdleConns)
-	pool.SetMaxOpenConns(c.Database.MaxOpenConns)
+	pool.SetConnMaxLifetime(c.ConnMaxLifetime)
+	pool.SetMaxIdleConns(c.MaxIdleConns)
+	pool.SetMaxOpenConns(c.MaxOpenConns)
 
-	return &pgsqlConf{
+	return &pgsql{
 		pool:            pool,
-		maxPingTimeOut:  c.Database.MaxPingTimeOut,
-		maxQueryTimeOut: c.Database.MaxQueryTimeOut,
+		maxPingTimeOut:  c.MaxPingTimeOut,
+		maxQueryTimeOut: c.MaxQueryTimeOut,
 	}, nil
 
 }
 
 // Connect returns a single connection by either opening a new connection
 // or returning an existing connection from the connection pool.
-func (c *pgsqlConf) Connect(ctx context.Context) error {
+func (c *pgsql) Connect(ctx context.Context) error {
 
 	conn, err := c.pool.Conn(ctx)
 	c.conn = conn
@@ -63,7 +62,7 @@ func (c *pgsqlConf) Connect(ctx context.Context) error {
 
 // Ping verifies a connection to the database is still alive,
 // establishing a connection if necessary.
-func (c *pgsqlConf) Ping(ctx context.Context) error {
+func (c *pgsql) Ping(ctx context.Context) error {
 
 	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
 	defer cancel()
@@ -78,7 +77,7 @@ func (c *pgsqlConf) Ping(ctx context.Context) error {
 }
 
 // ExecContext executes a query without returning any rows.
-func (c *pgsqlConf) ExecContext(ctx context.Context, q string) (sql.Result, error) {
+func (c *pgsql) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
 	defer cancel()
@@ -94,6 +93,6 @@ func (c *pgsqlConf) ExecContext(ctx context.Context, q string) (sql.Result, erro
 }
 
 // Close closes the database and prevents new queries from starting.
-func (c *pgsqlConf) Close() error {
+func (c *pgsql) Close() error {
 	return c.pool.Close()
 }

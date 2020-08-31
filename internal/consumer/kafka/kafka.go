@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
 )
 
@@ -9,7 +8,7 @@ import (
 type Consumer struct{}
 
 // New return a new instance of consumer.Consumer
-func New(c *config.Config) (consumer.Consumer, error) {
+func New(c *consumer.Config) (consumer.Consumer, error) {
 	return &Consumer{}, nil
 }
 

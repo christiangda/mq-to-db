@@ -2,12 +2,45 @@ package consumer
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
 // This package is an abstraction layer for queue consumers
 // any kind of consumer could implements interfaces here
 // additionally could be used to create tests stubs
+
+// Config used to configure consumers
+type Config struct {
+	Name               string
+	Address            string
+	Port               int
+	RequestedHeartbeat time.Duration
+	Username           string
+	Password           string
+	VirtualHost        string
+	Queue              struct {
+		Name       string
+		RoutingKey string
+		Durable    bool
+		AutoDelete bool
+		Exclusive  bool
+		AutoACK    bool
+		Args       map[string]interface{}
+	}
+	Exchange struct {
+		Name       string
+		Kind       string
+		Durable    bool
+		AutoDelete bool
+		Args       map[string]interface{}
+	}
+}
+
+// GetURI return the consumer URI
+func (cc *Config) GetURI() string {
+	return fmt.Sprintf("amqp://%s:%s@%s:%d/", cc.Username, cc.Password, cc.Address, cc.Port)
+}
 
 // Consumer interface to be implemented for any kind of queue consumer
 type Consumer interface {

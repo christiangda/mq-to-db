@@ -1,17 +1,15 @@
 package rmq
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/streadway/amqp"
 )
 
-// Consumer is a RabbitMQ consumer configuration
+// Rmq is a RabbitMQ consumer configuration
 // Implement Consumer.Consumer interface
-type Consumer struct {
+type Rmq struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
@@ -39,15 +37,15 @@ type Consumer struct {
 }
 
 // New create a new rabbitmq consumer with implements consumer.Consumer interface
-func New(c *config.Config) (consumer.Consumer, error) {
+func New(c *consumer.Config) (consumer.Consumer, error) {
 
-	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/", c.Consumer.Username, c.Consumer.Password, c.Consumer.Address, c.Consumer.Port)
+	uri := c.GetURI()
 
-	return &Consumer{
-		name:               c.Application.Name,
+	return &Rmq{
+		name:               c.Name,
 		uri:                uri,
-		requestedHeartbeat: c.Consumer.RequestedHeartbeat,
-		virtualHost:        c.Consumer.VirtualHost,
+		requestedHeartbeat: c.RequestedHeartbeat,
+		virtualHost:        c.VirtualHost,
 		queue: struct {
 			name       string
 			routingKey string
@@ -57,13 +55,13 @@ func New(c *config.Config) (consumer.Consumer, error) {
 			autoACK    bool
 			args       map[string]interface{}
 		}{
-			c.Consumer.Queue.Name,
-			c.Consumer.Queue.RoutingKey,
-			c.Consumer.Queue.Durable,
-			c.Consumer.Queue.AutoDelete,
-			c.Consumer.Queue.Exclusive,
-			c.Consumer.Queue.AutoACK,
-			c.Consumer.Queue.Args,
+			c.Queue.Name,
+			c.Queue.RoutingKey,
+			c.Queue.Durable,
+			c.Queue.AutoDelete,
+			c.Queue.Exclusive,
+			c.Queue.AutoACK,
+			c.Queue.Args,
 		},
 		exchange: struct {
 			name       string
@@ -72,17 +70,17 @@ func New(c *config.Config) (consumer.Consumer, error) {
 			autoDelete bool
 			args       map[string]interface{}
 		}{
-			c.Consumer.Exchange.Name,
-			c.Consumer.Exchange.Kind,
-			c.Consumer.Exchange.Durable,
-			c.Consumer.Exchange.AutoDelete,
-			c.Consumer.Exchange.Args,
+			c.Exchange.Name,
+			c.Exchange.Kind,
+			c.Exchange.Durable,
+			c.Exchange.AutoDelete,
+			c.Exchange.Args,
 		},
 	}, nil
 }
 
 // Connect to RabbitMQ server and channel
-func (c *Consumer) Connect() error {
+func (c *Rmq) Connect() error {
 
 	amqpConfig := amqp.Config{}
 
@@ -148,7 +146,7 @@ func (c *Consumer) Connect() error {
 }
 
 // Consume messages from the queue channel
-func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
+func (c *Rmq) Consume(id string) (<-chan consumer.Messages, error) {
 
 	// Register a consumer
 	msgs, err := c.channel.Consume(
@@ -188,7 +186,7 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 }
 
 // Close the channel connection
-func (c *Consumer) Close() error {
+func (c *Rmq) Close() error {
 	if err := c.channel.Close(); err != nil {
 		return err
 	}

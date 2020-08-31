@@ -199,13 +199,26 @@ func main() {
 	// Select the storage
 	switch conf.Database.Kind {
 	case "memory":
-		db, err = memory.New(&conf)
+		db, err = memory.New(&storage.Config{})
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Info("Using  memory database")
 	case "postgresql":
-		db, err = pgsql.New(&conf)
+		db, err = pgsql.New(&storage.Config{
+			Address:  conf.Database.Address,
+			Port:     conf.Database.Port,
+			Username: conf.Database.Username,
+			Password: conf.Database.Password,
+			Database: conf.Database.Database,
+			SSLMode:  conf.Database.SSLMode,
+
+			MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
+			MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
+			ConnMaxLifetime: conf.Database.ConnMaxLifetime,
+			MaxIdleConns:    conf.Database.MaxIdleConns,
+			MaxOpenConns:    conf.Database.MaxOpenConns,
+		})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -217,13 +230,51 @@ func main() {
 	// Select the consumer
 	switch conf.Consumer.Kind {
 	case "kafka":
-		qc, err = kafka.New(&conf)
+		qc, err = kafka.New(&consumer.Config{})
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Info("Using kafka consumer")
 	case "rabbitmq":
-		qc, err = rmq.New(&conf)
+		qc, err = rmq.New(&consumer.Config{
+			Name:               conf.Application.Name,
+			Address:            conf.Consumer.Address,
+			Port:               conf.Consumer.Port,
+			RequestedHeartbeat: conf.Consumer.RequestedHeartbeat,
+			Username:           conf.Consumer.Username,
+			Password:           conf.Consumer.Password,
+			VirtualHost:        conf.Consumer.VirtualHost,
+			Queue: struct {
+				Name       string
+				RoutingKey string
+				Durable    bool
+				AutoDelete bool
+				Exclusive  bool
+				AutoACK    bool
+				Args       map[string]interface{}
+			}{
+				conf.Consumer.Queue.Name,
+				conf.Consumer.Queue.RoutingKey,
+				conf.Consumer.Queue.Durable,
+				conf.Consumer.Queue.AutoDelete,
+				conf.Consumer.Queue.Exclusive,
+				conf.Consumer.Queue.AutoACK,
+				conf.Consumer.Queue.Args,
+			},
+			Exchange: struct {
+				Name       string
+				Kind       string
+				Durable    bool
+				AutoDelete bool
+				Args       map[string]interface{}
+			}{
+				conf.Consumer.Exchange.Name,
+				conf.Consumer.Exchange.Kind,
+				conf.Consumer.Exchange.Durable,
+				conf.Consumer.Exchange.AutoDelete,
+				conf.Consumer.Exchange.Args,
+			},
+		})
 		if err != nil {
 			log.Fatal(err)
 		}
