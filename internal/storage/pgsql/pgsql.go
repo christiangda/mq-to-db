@@ -96,3 +96,8 @@ func (c *pgsql) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 func (c *pgsql) Close() error {
 	return c.pool.Close()
 }
+
+// Close closes the database and prevents new queries from starting.
+func (c *pgsql) Stats() sql.DBStats {
+	return c.pool.Stats()
+}

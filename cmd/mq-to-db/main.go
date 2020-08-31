@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
@@ -31,18 +35,95 @@ import (
 )
 
 const (
-	appName          = "mq-to-db"
-	appDescription   = "This is a Message Queue Consumer to store the payload into Database"
-	appGitRepository = "https://github.com/christiangda/mq-to-db"
-	appMetricsPath   = "/metrics"
-	appHealthPath    = "/health"
-	appEnvPrefix     = "MQTODB_"
+	appName             = "mq-to-db"
+	appDescription      = "This is a Message Queue Consumer to store the payload into Database"
+	appGitRepository    = "https://github.com/christiangda/mq-to-db"
+	appMetricsPath      = "/metrics"
+	appMetricsNamespace = "mq_to_db"
+	appHealthPath       = "/health"
+	appEnvPrefix        = "MQTODB_"
 )
 
 var (
 	appHost string
 	conf    config.Config
 	v       = viper.New()
+
+	// Prometheus metrics in this package
+	// ****************************************
+	mtrUp = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "up",
+		Help:      appName + " is up and running.",
+	})
+
+	mtrInfo = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "build_info",
+		Help: fmt.Sprintf(
+			"A metric with a constant '1' value labeled by version, revision, branch, and goversion from which %s was built.",
+			appName,
+		),
+		ConstLabels: prometheus.Labels{
+			"version":   conf.Application.Version,
+			"revision":  conf.Application.Revision,
+			"branch":    conf.Application.Branch,
+			"goversion": conf.Application.GoVersion,
+		},
+	})
+
+	// DB Metrics
+	mtrMaxOpenConnections = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "max_open_connections",
+		Help:      "Maximum number of open connections to the database.",
+	})
+	mtrOpenConnections = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "open_connections",
+		Help:      "The number of established connections both in use and idle.",
+	})
+
+	// Consumers
+	mtrRunningConsumers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "running_consumers",
+		Help:      "Number of consumer running"},
+		[]string{
+			// Consumer name
+			"name",
+		},
+	)
+	mtrConsumersMessages = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "consumers_messages",
+		Help:      "Number of messages consumed my consumers."},
+		[]string{
+			// Consumer name
+			"name",
+		},
+	)
+
+	// Workers
+	mtrRunningStorageWorkers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "running_storage_workers",
+		Help:      "Number of Storage Workers running"},
+		[]string{
+			// Storage Worker name
+			"name",
+		},
+	)
+	mtrStorageWorkersMessages = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: appMetricsNamespace,
+		Name:      "storage_workers_messages",
+		Help:      "Number of messages consumed my storage_workers."},
+		[]string{
+			// Storage Worker name
+			"name",
+		},
+	)
+	// ****************************************
 )
 
 func init() { // package initializer
@@ -62,6 +143,19 @@ func init() { // package initializer
 	conf.Application.BuildDate = version.BuildDate
 	conf.Application.VersionInfo = version.GetVersionInfo()
 	conf.Application.BuildInfo = version.GetVersionInfoExtended()
+
+	// // Register prometheus metrics for this package
+	prometheus.MustRegister(mtrUp)
+	prometheus.MustRegister(mtrInfo)
+
+	prometheus.MustRegister(mtrMaxOpenConnections)
+	prometheus.MustRegister(mtrOpenConnections)
+
+	prometheus.MustRegister(mtrRunningConsumers)
+	prometheus.MustRegister(mtrConsumersMessages)
+
+	prometheus.MustRegister(mtrRunningStorageWorkers)
+	prometheus.MustRegister(mtrStorageWorkersMessages)
 
 	// Server conf flags
 	flag.StringVar(&conf.Server.Address, "address", "127.0.0.1", "Server address")
@@ -323,6 +417,7 @@ func main() {
 	// Start Consumers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
+
 		// ids for consumers
 		id := fmt.Sprintf("%s-%s-consumer-%d", appHost, conf.Application.Name, i)
 		sliceChanMessages[i] = messageConsumer(appCtx, id, qc)
@@ -334,6 +429,7 @@ func main() {
 	// Start storage workers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
+
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
 		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
@@ -354,6 +450,25 @@ func main() {
 	}()
 
 	// ********************************************
+
+	// Filling metrics
+	mtrUp.Add(1)
+	mtrInfo.Add(1)
+	mtrMaxOpenConnections.Add(float64(db.Stats().MaxOpenConnections))
+	mtrOpenConnections.Add(float64(db.Stats().OpenConnections))
+
+	// Expose the registered metrics via HTTP.
+	http.Handle("/metrics", promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			// Opt into OpenMetrics to support exemplars.
+			EnableOpenMetrics: true,
+		},
+	))
+	go func() {
+		mtrServerAddr := conf.Server.Address + ":" + strconv.Itoa(conf.Server.Port)
+		log.Fatal(http.ListenAndServe(mtrServerAddr, nil))
+	}()
 
 	// Block the main function here until we receive OS signals
 	<-osSignal
@@ -407,6 +522,9 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 
 		log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
 
+		//prometheus metrics
+		mtrRunningConsumers.With(prometheus.Labels{"name": id}).Inc()
+
 		// reading from message queue
 		msgs, err := qc.Consume(id)
 		if err != nil {
@@ -418,9 +536,13 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 			select {
 
 			case out <- m: // put messages consumed into the out chan
+				mtrConsumersMessages.With(prometheus.Labels{"name": id}).Inc()
+
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
+				mtrRunningConsumers.With(prometheus.Labels{"name": id}).Dec()
+
 				// closes the consumer queue and connection
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -446,11 +568,15 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 
 		log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
 
+		//prometheus metrics
+		mtrRunningStorageWorkers.With(prometheus.Labels{"name": id}).Inc()
+
 		// loop to dispatch the messages read to the channel consummed from storage workers
 		for {
 			select {
 
 			case m := <-chanMsgs:
+				mtrStorageWorkersMessages.With(prometheus.Labels{"name": id}).Inc()
 				r := st.Store(m) // proccess and storage message into db
 				r.By = id        // fill who execute it
 				out <- r
@@ -458,13 +584,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
-				// closes the consumer queue and connection
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					wg.Done()
-				}()
-				wg.Wait()
+				mtrRunningStorageWorkers.With(prometheus.Labels{"name": id}).Dec()
 
 				return // go out of the for loop
 			}

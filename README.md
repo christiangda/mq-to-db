@@ -160,6 +160,9 @@ __NOTES__ related to make
 ### Metrics
 
 * [https://prometheus.io/docs/guides/go-application/](https://prometheus.io/docs/guides/go-application/)
+* [https://eltonminetto.net/en/post/2020-03-13-golang-prometheus/](https://eltonminetto.net/en/post/2020-03-13-golang-prometheus/)
+* [https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/](https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/)
+* [https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42](https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42)
 
 ### Tests
 

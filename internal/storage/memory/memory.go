@@ -34,3 +34,8 @@ func (c *memoryConf) ExecContext(ctx context.Context, q string) (sql.Result, err
 func (c *memoryConf) Close() error {
 	return nil
 }
+
+// Stats ...
+func (c *memoryConf) Stats() sql.DBStats {
+	return sql.DBStats{}
+}
