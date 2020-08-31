@@ -72,7 +72,7 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	// var err error
 	// if sqlm.ValidDataConn() {
 	// 	// create database connection
-	// 	conf := &config.Config{
+	// 	conf := &storage.Config{
 	// 		Server:   sqlm.Content.Server,
 	// 		Database: sqlm.Content.DB,
 	// 	}

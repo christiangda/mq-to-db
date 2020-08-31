@@ -228,3 +228,152 @@ func TestSQL_ToYAML(t *testing.T) {
 	}
 }
 */
+
+func TestSQL_ValidDataConn(t *testing.T) {
+	type fields struct {
+		Content struct {
+			Server   string
+			DB       string
+			User     string
+			Pass     string
+			Sentence string
+		}
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "valid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server:   "localhost",
+					DB:       "postgresql",
+					User:     "postgres",
+					Pass:     "mysecretpassword",
+					Sentence: "SELECT pg_sleep(1);",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "invalid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server: "",
+					DB:     "postgresql",
+					User:   "postgres",
+					Pass:   "mysecretpassword",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server: "localhost",
+					DB:     "",
+					User:   "postgres",
+					Pass:   "mysecretpassword",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server: "localhost",
+					DB:     "postgresql",
+					User:   "",
+					Pass:   "mysecretpassword",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server: "localhost",
+					DB:     "postgresql",
+					User:   "postgre",
+					Pass:   "",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid",
+			fields: fields{
+				Content: struct {
+					Server   string
+					DB       string
+					User     string
+					Pass     string
+					Sentence string
+				}{
+					Server: "",
+					DB:     "",
+					User:   "",
+					Pass:   "",
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &SQL{
+				Content: struct {
+					Server   string "json:\"SERVER\" yaml:\"SERVER\""
+					DB       string "json:\"DB\" yaml:\"DB\""
+					User     string "json:\"USER\" yaml:\"USER\""
+					Pass     string "json:\"PASS\" yaml:\"PASS\""
+					Sentence string "json:\"SENTENCE\" yaml:\"SENTENCE\""
+				}{
+					Server:   tt.fields.Content.Server,
+					DB:       tt.fields.Content.DB,
+					User:     tt.fields.Content.User,
+					Pass:     tt.fields.Content.Pass,
+					Sentence: tt.fields.Content.Sentence,
+				},
+			}
+			if got := m.ValidDataConn(); got != tt.want {
+				t.Errorf("SQL.ValidDataConn() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
