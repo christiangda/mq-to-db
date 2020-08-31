@@ -67,22 +67,37 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
 
-	// here could be impelmented the use of database connection inside of SQL Message
+	// TODO: Check if this work and implement some conf parameter to stablish the default database as storer
+	// TODO: In case of use the Message Content as Connection, check how to close the connection
+	// // here could be impelmented the use of database connection inside of SQL Message
 	// var result sql.Result
-	// var err error
-	// if sqlm.ValidDataConn() {
+	// var db storage.Store
+	// if sqlm.ValidDataConn() && !"some value in the conf force to use default database" {
 	// 	// create database connection
-	// 	conf := &storage.Config{
-	// 		Server:   sqlm.Content.Server,
+	// 	db, err = pgsql.New(&storage.Config{
+	// 		Address:  sqlm.Content.Server,
 	// 		Database: sqlm.Content.DB,
-	// 	}
-	// 	db, err = pgsql.New(&conf)
+	// 		Username: sqlm.Content.User,
+	// 		Password: sqlm.Content.Pass,
+	// 	})
 	// 	if err != nil {
-	// 		log.Fatal(err)
+	// 		return Results{
+	// 			Error:   err,
+	// 			Content: sqlm.ToJSON,
+	// 			Reason:  "Impossible to create a new database connection with the message Content",
+	// 		}
 	// 	}
-
+	// 	if err := db.Connect(s.ctx); err != nil {
+	// 		return Results{
+	// 			Error:   err,
+	// 			Content: sqlm.ToJSON,
+	// 			Reason:  "Impossible to use message Content to connect into database",
+	// 		}
+	// 	}
+	// 	result, err = db.ExecContext(s.ctx, sqlm.Content.Sentence)
+	// 	defer db.Close()
 	// } else {
-	// 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
+	// 	result, err = s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
 	// }
 
 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
