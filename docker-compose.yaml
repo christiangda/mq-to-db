@@ -1,0 +1,88 @@
+---
+version: "3.5"
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+  postgresql_data: {}
+  rabbitmq_data: {}
+
+networks:
+  tools:
+
+services:
+  # Database
+  postgresql:
+    container_name: postgresql
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: postgres
+    ports:
+      - 5432:5432
+    networks:
+      - tools
+    restart: always
+
+  # Queue system
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - tools
+    restart: always
+    
+  # Monitoring
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.20.1
+    user: root
+    volumes:
+      - ./data/prometheus/:/etc/prometheus/:Z
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    networks:
+      - tools
+    restart: always
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:7.1.5
+    environment:
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./data/grafana/provisioning/:/etc/grafana/provisioning/
+    ports:
+      - 3000:3000      
+    networks:
+      - tools
+    depends_on:
+      - prometheus      
+    restart: always
+
+  # mq-to-db
+  mq-to-db:
+    container_name: mq-to-db
+    build: .
+    volumes:
+      - ./config-sample.yaml:/home/nobody/config.yaml
+    ports:
+      - 8080:8080
+    networks:
+      - tools
+    links:
+        - postgresql
+        - rabbitmq
+    depends_on:
+      - postgresql
+      - rabbitmq
+    restart: always
