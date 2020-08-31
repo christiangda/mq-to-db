@@ -394,7 +394,7 @@ func ListenOSSignals(osSignal *chan bool) {
 		sig := <-osSignals // This go routine is blocked here until receive a OS Signal
 		log.Warnf("Received signal %s from Operating System", sig)
 
-		// Notify main routine shutdown is done
+		// Notify main routine that shutdown was solicited
 		*osSignal <- true
 	}(osSignal)
 }
