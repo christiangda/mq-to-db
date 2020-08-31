@@ -95,7 +95,7 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	// 		}
 	// 	}
 	// 	result, err = db.ExecContext(s.ctx, sqlm.Content.Sentence)
-	// 	defer db.Close()
+	// 	defer db.Close() // check if this es possible
 	// } else {
 	// 	result, err = s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
 	// }
