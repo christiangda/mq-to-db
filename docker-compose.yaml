@@ -1,84 +1,117 @@
 ---
 version: "3.5"
 
-volumes:
-  prometheus_data: {}
-  grafana_data: {}
-  postgresql_data: {}
-  rabbitmq_data: {}
+# volumes:
+#   prometheus_data: {}
+#   grafana_data: {}
+#   postgresql_data: {}
+#   rabbitmq_data: {}
 
-networks:
-  tools:
+# networks:
+#   development:
 
 services:
   # Database
   postgresql:
     container_name: postgresql
     image: postgres
+    network_mode: bridge
+    # networks:
+    #   - development
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: postgres
     ports:
       - 5432:5432
-    networks:
-      - tools
     restart: always
 
   # Queue system
   rabbitmq:
     container_name: rabbitmq
     image: rabbitmq:3-management
+    network_mode: bridge
+    # networks:
+    #   - development
     ports:
       - 5672:5672
       - 15672:15672
-    networks:
-      - tools
     restart: always
     
   # Monitoring
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.20.1
+    network_mode: bridge
+    # networks:
+    #   - development
     user: root
     volumes:
-      - ./data/prometheus/:/etc/prometheus/:Z
-      - prometheus_data:/prometheus
+      - ./docker-compose/prometheus/:/etc/prometheus/:Z
+      #- prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
       - 9090:9090
-    networks:
-      - tools
     restart: always
 
   grafana:
     container_name: grafana
     image: grafana/grafana:7.1.5
+    network_mode: bridge
+    # networks:
+    #   - development
     environment:
       GF_AUTH_BASIC_ENABLED: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "true"
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./data/grafana/provisioning/:/etc/grafana/provisioning/
+      - ./docker-compose/grafana/provisioning/:/etc/grafana/provisioning/
+      #- grafana_data:/var/lib/grafana
     ports:
       - 3000:3000      
-    networks:
-      - tools
     depends_on:
       - prometheus      
     restart: always
 
   # mq-to-db
-  mq-to-db:
-    container_name: mq-to-db
-    build: .
+  mq-to-db-01:
+    container_name: mq-to-db-01
+    network_mode: bridge
+    # networks:
+    #   - development
+    build:
+        dockerfile: Dockerfile
+        context: ./
     volumes:
-      - ./config-sample.yaml:/home/nobody/config.yaml
+      - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
+    environment:
+      ADDRESS: 127.0.0.1
+      PORT: 8080
     ports:
       - 8080:8080
-    networks:
-      - tools
+    links:
+        - postgresql
+        - rabbitmq
+    depends_on:
+      - postgresql
+      - rabbitmq
+    restart: always
+
+  mq-to-db-02:
+    container_name: mq-to-db-02
+    network_mode: bridge
+    # networks:
+    #   - development
+    build:
+        dockerfile: Dockerfile
+        context: ./
+    volumes:
+      - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
+    environment:
+      ADDRESS: 127.0.0.1
+      PORT: 8081
+    ports:
+      - 8081:8081
     links:
         - postgresql
         - rabbitmq

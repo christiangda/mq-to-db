@@ -32,13 +32,13 @@ go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 
 __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang.org/race-detector) because we are using [Go Concurrency](https://blog.golang.org/pipelines)
 
-binary
+### binary
 
 ```bash
 ./mq-to-db --help
 ```
 
-RabbitMQ
+### RabbitMQ
 
 ```bash
 docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
@@ -50,7 +50,7 @@ __NOTE:__
 * Username: guest
 * Password: guest
 
-PostgreSQL
+### PostgreSQL
 
 ```bash
 docker run --rm  --name postgresql -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
@@ -62,7 +62,7 @@ docker logs postgresql -f
 docker stop postgresql
 ```
 
-mq-to-db
+### mq-to-db
 
 ```bash
 go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
@@ -73,6 +73,27 @@ o
 ```bash
 make
 ./mq-to-db --configFile config-sample.yaml
+```
+
+## docker-compose
+
+### Up
+
+```bash
+docker-compose up --build
+```
+
+### Down
+
+```bash
+docker-compose down -v
+```
+
+### Logs
+
+```bash
+docker-compose logs mq-to-db-01
+docker-compose logs mq-to-db-02
 ```
 
 ## How to build

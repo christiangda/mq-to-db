@@ -12,7 +12,12 @@ scrape_configs:
          - targets: ["localhost:9090"]
 
 
-  - job_name: mq-to-db
+  - job_name: mq-to-db-01
     scrape_interval: 5s
     static_configs:
-         - targets: ["mq-to-db:8080"]
+         - targets: ["mq-to-db-01:8080"]
+
+  - job_name: mq-to-db-02
+    scrape_interval: 5s
+    static_configs:
+         - targets: ["mq-to-db-02:8081"]

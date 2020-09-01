@@ -21,7 +21,7 @@ RUN mkdir -p /home/nobody && \
 ENV HOME="/home/nobody"
 
 COPY mq-to-db /bin/mq-to-db
-COPY config-sample.yaml /etc/mq-to-db/config.yaml
+COPY config-sample.yaml /etc/mq-to-db/config-config.yaml
 RUN chmod +x /bin/mq-to-db
 
 #HEALTHCHECK CMD wget --spider -S "http://127.0.0.1:${METRICS_PORT}/${HEALTH_CHECK_PATH}" -T 60 2>&1 || exit 1
