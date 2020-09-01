@@ -158,14 +158,14 @@ func init() { // package initializer
 	prometheus.MustRegister(mtrStorageWorkersMessages)
 
 	// Server conf flags
-	flag.StringVar(&conf.Server.Address, "address", "127.0.0.1", "Server address")
-	flag.IntVar(&conf.Server.Port, "port", 8080, "Server port")
-	flag.DurationVar(&conf.Server.ReadTimeout, "readTimeout", 2*time.Second, "Server ReadTimeout")
-	flag.DurationVar(&conf.Server.WriteTimeout, "writeTimeout", 5*time.Second, "Server WriteTimeout")
-	flag.DurationVar(&conf.Server.IdleTimeout, "idleTimeout", 60*time.Second, "Server IdleTimeout")
-	flag.DurationVar(&conf.Server.ReadTimeout, "readHeaderTimeout", 5*time.Second, "Server ReadHeaderTimeout")
-	flag.DurationVar(&conf.Server.ShutdownTimeout, "shutdownTimeout", 30*time.Second, "Server ShutdownTimeout")
-	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "keepAlivesEnabled", true, "Server KeepAlivesEnabled")
+	flag.StringVar(&conf.Server.Address, "server.address", "127.0.0.1", "Server address")
+	flag.IntVar(&conf.Server.Port, "server.port", 8080, "Server port")
+	flag.DurationVar(&conf.Server.ReadTimeout, "server.readTimeout", 2*time.Second, "Server ReadTimeout")
+	flag.DurationVar(&conf.Server.WriteTimeout, "server.writeTimeout", 5*time.Second, "Server WriteTimeout")
+	flag.DurationVar(&conf.Server.IdleTimeout, "server.idleTimeout", 60*time.Second, "Server IdleTimeout")
+	flag.DurationVar(&conf.Server.ReadTimeout, "server.readHeaderTimeout", 5*time.Second, "Server ReadHeaderTimeout")
+	flag.DurationVar(&conf.Server.ShutdownTimeout, "server.shutdownTimeout", 30*time.Second, "Server ShutdownTimeout")
+	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "server.keepAlivesEnabled", true, "Server KeepAlivesEnabled")
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
 	// Application conf var
@@ -466,6 +466,12 @@ func main() {
 		},
 	))
 	go func() {
+
+		log.WithFields(logrus.Fields{
+			"server": conf.Server.Address,
+			"port":   conf.Server.Port,
+		}).Info("Starting metrics server")
+
 		mtrServerAddr := conf.Server.Address + ":" + strconv.Itoa(conf.Server.Port)
 		log.Fatal(http.ListenAndServe(mtrServerAddr, nil))
 	}()

@@ -77,6 +77,12 @@ make
 
 ## docker-compose
 
+### Compile
+
+```bash
+make
+```
+
 ### Up
 
 ```bash
