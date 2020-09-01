@@ -41,7 +41,6 @@ const (
 	appMetricsPath      = "/metrics"
 	appMetricsNamespace = "mq_to_db"
 	appHealthPath       = "/health"
-	appEnvPrefix        = "MQTODB_"
 )
 
 var (
@@ -176,6 +175,7 @@ func init() { // package initializer
 	showBuildInfo := flag.Bool("buildInfo", false, "Show application build information")
 
 	flag.Parse()
+	v.BindPFlags(flag.CommandLine) //necessary to read from Env Vars too
 
 	if *showVersion {
 		fmt.Println(conf.Application.Version)
@@ -260,12 +260,11 @@ func main() {
 	v.AddConfigPath("$HOME/." + appName)
 
 	// Env Vars
-	v.SetEnvPrefix(appEnvPrefix)
-	v.AllowEmptyEnv(true)
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
 	log.Debugf("Environment Variables: %s", os.Environ())
+	v.AutomaticEnv()
+	//v.AllowEmptyEnv(true)
+	//Substitute the _ to .
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // because EnvVar are SERVER_PORT and config is server.port
 
 	log.Infof("Loading configuration file: %s", conf.Application.ConfigFile)
 	if err := v.ReadInConfig(); err != nil {
