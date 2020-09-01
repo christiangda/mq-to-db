@@ -11,7 +11,7 @@ LABEL maintainer="Mantainer User <mantainer.user@mail.com>" \
       org.opencontainers.image.documentation="https://github.com/christiangda/${PROJECT_NAME}" \
       org.opencontainers.image.source="https://github.com/christiangda/${PROJECT_NAME}"
 
-EXPOSE  ${METRICS_PORT}
+EXPOSE ${METRICS_PORT}
 
 RUN mkdir -p /home/nobody && \
     mkdir -p /etc/mq-to-db && \

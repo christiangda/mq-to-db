@@ -157,7 +157,7 @@ func init() { // package initializer
 	prometheus.MustRegister(mtrStorageWorkersMessages)
 
 	// Server conf flags
-	flag.StringVar(&conf.Server.Address, "server.address", "127.0.0.1", "Server address")
+	flag.StringVar(&conf.Server.Address, "server.address", "", "Server address, empty means all address") //empty means all the address
 	flag.IntVar(&conf.Server.Port, "server.port", 8080, "Server port")
 	flag.DurationVar(&conf.Server.ReadTimeout, "server.readTimeout", 2*time.Second, "Server ReadTimeout")
 	flag.DurationVar(&conf.Server.WriteTimeout, "server.writeTimeout", 5*time.Second, "Server WriteTimeout")
