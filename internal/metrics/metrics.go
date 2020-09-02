@@ -2,33 +2,61 @@ package metrics
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Metrics struct {
+	server *http.Server
+
 	// Global
 	Up   prometheus.Gauge
 	Info prometheus.Gauge
 
 	// DB
-	MaxOpenConnections prometheus.Gauge
-	OpenConnections    prometheus.Gauge
+	DatabaseMaxOpenConnections prometheus.Gauge
+	DatabaseOpenConnections    prometheus.Gauge
 
 	// Consumers
-	RunningConsumers  *prometheus.GaugeVec
-	ConsumersMessages *prometheus.CounterVec
+	ConsumerRunning  *prometheus.GaugeVec
+	ConsumerMessages *prometheus.CounterVec
 
 	// Storage Workers
-	RunningStorageWorkers  *prometheus.GaugeVec
-	StorageWorkersMessages *prometheus.CounterVec
+	StorageWorkerRunning  *prometheus.GaugeVec
+	StorageWorkerMessages *prometheus.CounterVec
 }
 
 // New return all the metrics
 func New(c *config.Config) *Metrics {
 
+	mux := http.NewServeMux()
+	mux.Handle(c.Application.MetricsPath, promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		},
+	))
+
+	httpServer := &http.Server{
+		ReadTimeout:       c.Server.ReadTimeout,
+		WriteTimeout:      c.Server.WriteTimeout,
+		IdleTimeout:       c.Server.IdleTimeout,
+		ReadHeaderTimeout: c.Server.ReadHeaderTimeout,
+		Addr:              c.Server.Address + ":" + strconv.Itoa(int(c.Server.Port)),
+		Handler:           mux,
+	}
+
+	httpServer.SetKeepAlivesEnabled(c.Server.KeepAlivesEnabled)
+
+	// NOTE: Take care of metrics name
+	// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 	mtrs := &Metrics{
+		server: httpServer,
+
 		// Globla metrics
 		Up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
@@ -51,29 +79,29 @@ func New(c *config.Config) *Metrics {
 		}),
 
 		// DB Metrics
-		MaxOpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
+		DatabaseMaxOpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "max_open_connections",
+			Name:      "database_max_open_connections",
 			Help:      "Maximum number of open connections to the database.",
 		}),
-		OpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
+		DatabaseOpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "open_connections",
+			Name:      "database_open_connections",
 			Help:      "The number of established connections both in use and idle.",
 		}),
 
 		// Consumers
-		RunningConsumers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		ConsumerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "running_consumers",
+			Name:      "consumer_running",
 			Help:      "Number of consumer running"},
 			[]string{
 				// Consumer name
 				"name",
 			}),
-		ConsumersMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
+		ConsumerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "consumers_messages",
+			Name:      "consumer_messages_total",
 			Help:      "Number of messages consumed my consumers."},
 			[]string{
 				// Consumer name
@@ -81,17 +109,19 @@ func New(c *config.Config) *Metrics {
 			}),
 
 		// Workers
-		RunningStorageWorkers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		StorageWorkerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "running_storage_workers",
+			Subsystem: "storage_worker",
+			Name:      "running",
 			Help:      "Number of Storage Workers running"},
 			[]string{
 				// Storage Worker name
 				"name",
 			}),
-		StorageWorkersMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
+		StorageWorkerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "storage_workers_messages",
+			Subsystem: "storage_worker",
+			Name:      "messages_total",
 			Help:      "Number of messages consumed my storage_workers."},
 			[]string{
 				// Storage Worker name
@@ -105,16 +135,23 @@ func New(c *config.Config) *Metrics {
 	prometheus.MustRegister(mtrs.Info)
 
 	// DB
-	prometheus.MustRegister(mtrs.MaxOpenConnections)
-	prometheus.MustRegister(mtrs.OpenConnections)
+	prometheus.MustRegister(mtrs.DatabaseMaxOpenConnections)
+	prometheus.MustRegister(mtrs.DatabaseOpenConnections)
 
 	// Consumers
-	prometheus.MustRegister(mtrs.RunningConsumers)
-	prometheus.MustRegister(mtrs.ConsumersMessages)
+	prometheus.MustRegister(mtrs.ConsumerRunning)
+	prometheus.MustRegister(mtrs.ConsumerMessages)
 
 	// Storage Workers
-	prometheus.MustRegister(mtrs.RunningStorageWorkers)
-	prometheus.MustRegister(mtrs.StorageWorkersMessages)
+	prometheus.MustRegister(mtrs.StorageWorkerRunning)
+	prometheus.MustRegister(mtrs.StorageWorkerMessages)
 
 	return mtrs
+}
+
+func (m Metrics) StartHTTPServer() (err error) {
+	if err := m.server.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+	return
 }

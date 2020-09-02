@@ -6,13 +6,11 @@ import (
 	"net/http"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
@@ -81,9 +79,9 @@ func init() { // package initializer
 	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "server.keepAlivesEnabled", true, "Server KeepAlivesEnabled")
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
-	// Application conf var
+	// Application conf flags
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
-	// Application version
+	// Application version flags
 	showVersion := flag.Bool("version", false, "Show application version")
 	showVersionInfo := flag.Bool("versionInfo", false, "Show application version information")
 	showBuildInfo := flag.Bool("buildInfo", false, "Show application build information")
@@ -334,7 +332,6 @@ func main() {
 	// Start Consumers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
-
 		// ids for consumers
 		id := fmt.Sprintf("%s-%s-consumer-%d", appHost, conf.Application.Name, i)
 		sliceChanMessages[i] = messageConsumer(appCtx, id, qc)
@@ -346,7 +343,6 @@ func main() {
 	// Start storage workers
 	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
-
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
 		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
@@ -371,17 +367,10 @@ func main() {
 	// Filling metrics
 	mtrs.Up.Add(1)
 	mtrs.Info.Add(1)
-	mtrs.MaxOpenConnections.Add(float64(db.Stats().MaxOpenConnections))
-	mtrs.OpenConnections.Add(float64(db.Stats().OpenConnections))
+	mtrs.DatabaseMaxOpenConnections.Add(float64(db.Stats().MaxOpenConnections))
+	mtrs.DatabaseOpenConnections.Add(float64(db.Stats().OpenConnections))
 
 	// Expose the registered metrics via HTTP.
-	http.Handle("/metrics", promhttp.HandlerFor(
-		prometheus.DefaultGatherer,
-		promhttp.HandlerOpts{
-			// Opt into OpenMetrics to support exemplars.
-			EnableOpenMetrics: true,
-		},
-	))
 	go func() {
 
 		log.WithFields(logrus.Fields{
@@ -389,8 +378,12 @@ func main() {
 			"port":   conf.Server.Port,
 		}).Info("Starting metrics server")
 
-		mtrServerAddr := conf.Server.Address + ":" + strconv.Itoa(conf.Server.Port)
-		log.Fatal(http.ListenAndServe(mtrServerAddr, nil))
+		if err := mtrs.StartHTTPServer(); err != http.ErrServerClosed {
+			log.WithFields(logrus.Fields{
+				"server": conf.Server.Address,
+				"port":   conf.Server.Port,
+			}).Fatal("Starting metrics server")
+		}
 	}()
 
 	// Block the main function here until we receive OS signals
@@ -446,7 +439,7 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 		log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
 
 		//prometheus metrics
-		mtrs.RunningConsumers.With(prometheus.Labels{"name": id}).Inc()
+		mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// reading from message queue
 		msgs, err := qc.Consume(id)
@@ -459,12 +452,12 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 			select {
 
 			case out <- m: // put messages consumed into the out chan
-				mtrs.ConsumersMessages.With(prometheus.Labels{"name": id}).Inc()
+				mtrs.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
 
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
-				mtrs.RunningConsumers.With(prometheus.Labels{"name": id}).Dec()
+				mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				// closes the consumer queue and connection
 				var wg sync.WaitGroup
@@ -492,22 +485,22 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 		log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
 
 		//prometheus metrics
-		mtrs.RunningStorageWorkers.With(prometheus.Labels{"name": id}).Inc()
+		mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
 		for {
 			select {
 
 			case m := <-chanMsgs:
-				mtrs.StorageWorkersMessages.With(prometheus.Labels{"name": id}).Inc()
 				r := st.Store(m) // proccess and storage message into db
 				r.By = id        // fill who execute it
 				out <- r
+				mtrs.StorageWorkerMessages.With(prometheus.Labels{"name": id}).Inc()
 
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
-				mtrs.RunningStorageWorkers.With(prometheus.Labels{"name": id}).Dec()
+				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				return // go out of the for loop
 			}
