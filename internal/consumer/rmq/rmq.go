@@ -7,9 +7,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Rmq is a RabbitMQ consumer configuration
+// rmq is a RabbitMQ consumer configuration
 // Implement Consumer.Consumer interface
-type Rmq struct {
+type rmq struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
@@ -41,7 +41,7 @@ func New(c *consumer.Config) (consumer.Consumer, error) {
 
 	uri := c.GetURI()
 
-	return &Rmq{
+	return &rmq{
 		name:               c.Name,
 		uri:                uri,
 		requestedHeartbeat: c.RequestedHeartbeat,
@@ -80,7 +80,7 @@ func New(c *consumer.Config) (consumer.Consumer, error) {
 }
 
 // Connect to RabbitMQ server and channel
-func (c *Rmq) Connect() error {
+func (c *rmq) Connect() error {
 
 	amqpConfig := amqp.Config{}
 
@@ -146,7 +146,7 @@ func (c *Rmq) Connect() error {
 }
 
 // Consume messages from the queue channel
-func (c *Rmq) Consume(id string) (<-chan consumer.Messages, error) {
+func (c *rmq) Consume(id string) (<-chan consumer.Messages, error) {
 
 	// Register a consumer
 	msgs, err := c.channel.Consume(
@@ -186,7 +186,7 @@ func (c *Rmq) Consume(id string) (<-chan consumer.Messages, error) {
 }
 
 // Close the channel connection
-func (c *Rmq) Close() error {
+func (c *rmq) Close() error {
 	if err := c.channel.Close(); err != nil {
 		return err
 	}
