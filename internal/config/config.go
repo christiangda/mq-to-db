@@ -82,20 +82,21 @@ type Config struct {
 
 	// This part is private, will be filled using code, not from file
 	Application struct {
-		Name          string `json:"name" yaml:"name"`
-		Description   string `json:"description" yaml:"description"`
-		GitRepository string `json:"gitRepository" yaml:"gitRepository"`
-		Version       string `json:"version" yaml:"version"`
-		Revision      string `json:"revision" yaml:"revision"`
-		Branch        string `json:"branch" yaml:"branch"`
-		BuildUser     string `json:"buildUser" yaml:"buildUser"`
-		BuildDate     string `json:"buildDate" yaml:"buildDate"`
-		GoVersion     string `json:"goVersion" yaml:"goVersion"`
-		VersionInfo   string `json:"versionInfo" yaml:"versionInfo"`
-		BuildInfo     string `json:"buildInfo" yaml:"buildInfo"`
-		ConfigFile    string `json:"configFile" yaml:"configFile"`
-		HealthPath    string `json:"healthPath" yaml:"healthPath"`
-		MetricsPath   string `json:"metricsPath" yaml:"metricsPath"`
+		Name             string `json:"name" yaml:"name"`
+		Description      string `json:"description" yaml:"description"`
+		GitRepository    string `json:"gitRepository" yaml:"gitRepository"`
+		Version          string `json:"version" yaml:"version"`
+		Revision         string `json:"revision" yaml:"revision"`
+		Branch           string `json:"branch" yaml:"branch"`
+		BuildUser        string `json:"buildUser" yaml:"buildUser"`
+		BuildDate        string `json:"buildDate" yaml:"buildDate"`
+		GoVersion        string `json:"goVersion" yaml:"goVersion"`
+		VersionInfo      string `json:"versionInfo" yaml:"versionInfo"`
+		BuildInfo        string `json:"buildInfo" yaml:"buildInfo"`
+		ConfigFile       string `json:"configFile" yaml:"configFile"`
+		HealthPath       string `json:"healthPath" yaml:"healthPath"`
+		MetricsPath      string `json:"metricsPath" yaml:"metricsPath"`
+		MetricsNamespace string `json:"metricsNamespace" yaml:"metricsNamespace"`
 	}
 }
 
