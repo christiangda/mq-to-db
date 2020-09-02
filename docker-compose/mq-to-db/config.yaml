@@ -1,0 +1,42 @@
+---
+dispatcher:
+  consumerConcurrency: 4 # Number of go routines consuming messages from Queue
+  storageWorkers: 40 # Number of go routines sending messages to storage
+
+consumer:
+  kind: rabbitmq
+  address: rabbitmq
+  port: 5672
+  requestedHeartbeat: 25s
+  username: guest
+  password: guest
+  # virtualHost: my.virtualhost # optional
+  queue:
+    name: my.queue
+    routingKey: my.routeKey
+    durable: true
+    autoDelete: true
+    exclusive: false
+    autoACK: false
+    args:
+      x-message-ttl: 180000
+      x-dead-letter-exchange: retry.exchange
+  exchange:
+    name: my.exchange
+    type: topic
+    durable: true
+    autoDelete: false
+
+database:
+  kind: postgresql
+  address: postgresql
+  port: 5432
+  username: postgres
+  password: mysecretpassword
+  database: postgres
+  sslMode: disable
+  maxPingTimeOut: 1s
+  maxQueryTimeOut: 10s
+  connMaxLifetime: 0
+  maxIdleConns: 5
+  maxOpenConns: 100
