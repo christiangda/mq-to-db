@@ -1,8 +1,15 @@
+# build stage
 ARG ARCH="amd64"
 ARG PROJECT_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
+ARG GO_VERSION="1.15"
+FROM golang:${GO_VERSION} AS build-container
+RUN apt install -y git gcc make
+ADD . /src
+RUN cd /src && make
 
+# ----------
 FROM ${ARCH}/busybox:glibc
 
 LABEL maintainer="Mantainer User <mantainer.user@mail.com>" \
@@ -20,8 +27,8 @@ RUN mkdir -p /home/nobody && \
 
 ENV HOME="/home/nobody"
 
-COPY mq-to-db /bin/mq-to-db
-COPY config-sample.yaml /etc/mq-to-db/config-config.yaml
+COPY --from=build-container /src/mq-to-db /bin/mq-to-db
+COPY --from=build-container /src/config-sample.yaml /etc/mq-to-db/config-config.yaml
 RUN chmod +x /bin/mq-to-db
 
 #HEALTHCHECK CMD wget --spider -S "http://127.0.0.1:${METRICS_PORT}/${HEALTH_CHECK_PATH}" -T 60 2>&1 || exit 1

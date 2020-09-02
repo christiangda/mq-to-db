@@ -40,7 +40,7 @@ endif
 
 #
 .PHONY: all
-all: clean go-lint go-tidy go-test go-build container-build
+all: clean go-lint go-tidy go-test go-build
 
 .PHONY: go-lint
 go-lint:
