@@ -37,7 +37,7 @@ services:
       - 5672:5672
       - 15672:15672
     restart: always
-    
+
   # Monitoring
   prometheus:
     container_name: prometheus
@@ -46,14 +46,14 @@ services:
     # networks:
     #   - development
     links:
-        - mq-to-db-01
-        - mq-to-db-02
+      - mq-to-db-01
+      - mq-to-db-02
     user: root
     volumes:
       - ./docker-compose/prometheus/:/etc/prometheus/:Z
       #- prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
       - 9090:9090
     restart: always
@@ -65,7 +65,7 @@ services:
     # networks:
     #   - development
     links:
-        - prometheus
+      - prometheus
     environment:
       GF_AUTH_BASIC_ENABLED: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "true"
@@ -73,9 +73,9 @@ services:
       - ./docker-compose/grafana/provisioning/:/etc/grafana/provisioning/
       #- grafana_data:/var/lib/grafana
     ports:
-      - 3000:3000      
+      - 3000:3000
     depends_on:
-      - prometheus      
+      - prometheus
     restart: always
 
   # mq-to-db
@@ -85,10 +85,10 @@ services:
     # networks:
     #   - development
     build:
-        dockerfile: Dockerfile
-        context: ./
-        args:
-          METRICS_PORT: 8080
+      dockerfile: Dockerfile
+      context: ./
+      args:
+        METRICS_PORT: 8080
     volumes:
       - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
     environment:
@@ -97,8 +97,8 @@ services:
     ports:
       - 8080:8080
     links:
-        - postgresql
-        - rabbitmq
+      - postgresql
+      - rabbitmq
     depends_on:
       - postgresql
       - rabbitmq
@@ -110,20 +110,20 @@ services:
     # networks:
     #   - development
     build:
-        dockerfile: Dockerfile
-        context: ./
-        args:
-          METRICS_PORT: 8081
+      dockerfile: Dockerfile
+      context: ./
+      args:
+        METRICS_PORT: 8081
     volumes:
-      - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
+      - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml
     environment:
       #SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
       SERVER_PORT: 8081
     ports:
       - 8081:8081
     links:
-        - postgresql
-        - rabbitmq
+      - postgresql
+      - rabbitmq
     depends_on:
       - postgresql
       - rabbitmq
