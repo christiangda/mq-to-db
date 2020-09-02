@@ -10,7 +10,6 @@ import (
 )
 
 type Metrics struct {
-	server  *http.Server
 	handler http.Handler
 
 	// Global
