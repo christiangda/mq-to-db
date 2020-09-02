@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -361,7 +363,6 @@ func main() {
 			}
 		}
 	}()
-
 	// ********************************************
 
 	// Filling metrics
@@ -370,19 +371,39 @@ func main() {
 	mtrs.DatabaseMaxOpenConnections.Add(float64(db.Stats().MaxOpenConnections))
 	mtrs.DatabaseOpenConnections.Add(float64(db.Stats().OpenConnections))
 
-	// Expose the registered metrics via HTTP.
+	// Expose metrics, health checks and home
+	mux := http.NewServeMux()
+	// metrics handler
+	mux.Handle(conf.Application.MetricsPath, mtrs.GetHandler())
+	// Home handler
+	mux.HandleFunc("/", HomePage)
+	// health check handler
+	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
+
+	// http server conf
+	httpServer := &http.Server{
+		ReadTimeout:       conf.Server.ReadTimeout,
+		WriteTimeout:      conf.Server.WriteTimeout,
+		IdleTimeout:       conf.Server.IdleTimeout,
+		ReadHeaderTimeout: conf.Server.ReadHeaderTimeout,
+		Addr:              conf.Server.Address + ":" + strconv.Itoa(int(conf.Server.Port)),
+		Handler:           mux,
+	}
+	httpServer.SetKeepAlivesEnabled(conf.Server.KeepAlivesEnabled)
+
+	// start httpserver in a go rutine
 	go func() {
 
 		log.WithFields(logrus.Fields{
 			"server": conf.Server.Address,
 			"port":   conf.Server.Port,
-		}).Info("Starting metrics server")
+		}).Info("Starting http server")
 
-		if err := mtrs.StartHTTPServer(); err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			log.WithFields(logrus.Fields{
 				"server": conf.Server.Address,
 				"port":   conf.Server.Port,
-			}).Fatal("Starting metrics server")
+			}).Fatal("Starting http server")
 		}
 	}()
 
@@ -574,4 +595,60 @@ func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <
 	}()
 
 	return out
+}
+
+//
+func HomePage(w http.ResponseWriter, r *http.Request) {
+	indexHTMLTmpl := `
+<html>
+<head>
+    <title>{{.Title}}</title>
+</head>
+<body>
+    <h1><a href="{{.GitRepository}}">{{.Name}}</a></h1>
+	<h2>{{.Description}}</h2>
+	<h3>Links:</h3>
+	<ul>
+		<li><a href="{{.MetricsPath}}">{{.MetricsPath}}</a></li>
+		<li><a href="{{.HealthPath}}">{{.HealthPath}}</a></li>
+	</ul>
+	<h2>Version</h2>
+	<ul>
+		<li>{{.VersionInfo}}</li>
+		<li>{{.BuildInfo}}</li>
+	</ul>
+
+	<h3><a href="https://prometheus.io/">If you want to know more about Metrics and Exporters go to https://prometheus.io</a></h3>
+</body>
+</html>
+`
+	data := struct {
+		Title         string
+		Name          string
+		Description   string
+		GitRepository string
+		MetricsPath   string
+		HealthPath    string
+		VersionInfo   string
+		BuildInfo     string
+	}{
+		conf.Application.Name,
+		conf.Application.Name,
+		conf.Application.Description,
+		conf.Application.GitRepository,
+		conf.Application.MetricsPath,
+		conf.Application.HealthPath,
+		conf.Application.VersionInfo,
+		conf.Application.BuildInfo,
+	}
+
+	t := template.Must(template.New("index").Parse(indexHTMLTmpl))
+	if err := t.Execute(w, data); err != nil {
+		log.Errorf("Error rendering template: %s", err)
+	}
+}
+
+// TODO: Implement the health check, when database fail or consumer fail
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 }

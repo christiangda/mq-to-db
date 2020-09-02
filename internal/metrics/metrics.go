@@ -3,7 +3,6 @@ package metrics
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,7 +10,8 @@ import (
 )
 
 type Metrics struct {
-	server *http.Server
+	server  *http.Server
+	handler http.Handler
 
 	// Global
 	Up   prometheus.Gauge
@@ -33,29 +33,17 @@ type Metrics struct {
 // New return all the metrics
 func New(c *config.Config) *Metrics {
 
-	mux := http.NewServeMux()
-	mux.Handle(c.Application.MetricsPath, promhttp.HandlerFor(
+	h := promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{
 			EnableOpenMetrics: true,
 		},
-	))
-
-	httpServer := &http.Server{
-		ReadTimeout:       c.Server.ReadTimeout,
-		WriteTimeout:      c.Server.WriteTimeout,
-		IdleTimeout:       c.Server.IdleTimeout,
-		ReadHeaderTimeout: c.Server.ReadHeaderTimeout,
-		Addr:              c.Server.Address + ":" + strconv.Itoa(int(c.Server.Port)),
-		Handler:           mux,
-	}
-
-	httpServer.SetKeepAlivesEnabled(c.Server.KeepAlivesEnabled)
+	)
 
 	// NOTE: Take care of metrics name
 	// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 	mtrs := &Metrics{
-		server: httpServer,
+		handler: h,
 
 		// Globla metrics
 		Up: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -149,9 +137,6 @@ func New(c *config.Config) *Metrics {
 	return mtrs
 }
 
-func (m Metrics) StartHTTPServer() (err error) {
-	if err := m.server.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
-	return
+func (m Metrics) GetHandler() http.Handler {
+	return m.handler
 }
