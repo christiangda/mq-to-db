@@ -71,6 +71,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
     volumes:
       - ./docker-compose/grafana/provisioning/:/etc/grafana/provisioning/
+      - ./docker-compose/grafana/dashboards/:/grafana/dashboards/prometheus/:Z
       #- grafana_data:/var/lib/grafana
     ports:
       - 3000:3000
