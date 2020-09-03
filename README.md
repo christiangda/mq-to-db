@@ -14,8 +14,13 @@ This is a [Golang (go)](https://golang.org/) program to read from a Message Queu
 
 ## Characteristics
 
-* The number of consumers could be different from the numbers of workers
+* The number of queue consumers could be different from the numbers of storage workers
 * The process (job) of consume one message from queue and store into the database is synchronous because every message needs to be acknowledge (confirm as storage).
+* Prometheus metrics for consumers, storage workers, go statistics and database.
+* Grafana dashboard for prometheus metrics
+* Dockerfile multi-stage build
+* Makefile to facilitate the project builds
+* docker-compose file and configuration to test all elements
 
 ## How to execute
 
@@ -44,7 +49,7 @@ __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang
 docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
 
-__NOTE:__  
+__NOTE:__
 
 * RabbitMQ web console: [http://localhost:15672](http://localhost:15672)
 * Username: guest

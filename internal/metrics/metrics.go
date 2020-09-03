@@ -25,8 +25,9 @@ type Metrics struct {
 	ConsumerMessages *prometheus.CounterVec
 
 	// Storage Workers
-	StorageWorkerRunning  *prometheus.GaugeVec
-	StorageWorkerMessages *prometheus.CounterVec
+	StorageWorkerRunning        *prometheus.GaugeVec
+	StorageWorkerMessages       *prometheus.CounterVec
+	StorageWorkerProcessingTime *prometheus.HistogramVec
 }
 
 // New return all the metrics
@@ -98,8 +99,7 @@ func New(c *config.Config) *Metrics {
 		// Workers
 		StorageWorkerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Subsystem: "storage_worker",
-			Name:      "running",
+			Name:      "storage_worker_running",
 			Help:      "Number of Storage Workers running"},
 			[]string{
 				// Storage Worker name
@@ -107,9 +107,16 @@ func New(c *config.Config) *Metrics {
 			}),
 		StorageWorkerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Subsystem: "storage_worker",
-			Name:      "messages_total",
+			Name:      "storage_worker_messages_total",
 			Help:      "Number of messages consumed my storage_workers."},
+			[]string{
+				// Storage Worker name
+				"name",
+			}),
+		StorageWorkerProcessingTime: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storage_worker_process_time_seconds",
+			Help:      "Amount of time spent storing messages"},
 			[]string{
 				// Storage Worker name
 				"name",
@@ -132,6 +139,7 @@ func New(c *config.Config) *Metrics {
 	// Storage Workers
 	prometheus.MustRegister(mtrs.StorageWorkerRunning)
 	prometheus.MustRegister(mtrs.StorageWorkerMessages)
+	prometheus.MustRegister(mtrs.StorageWorkerProcessingTime)
 
 	return mtrs
 }

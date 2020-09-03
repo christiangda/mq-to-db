@@ -513,10 +513,14 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 			select {
 
 			case m := <-chanMsgs:
+				startTime := time.Now()
 				r := st.Store(m) // proccess and storage message into db
 				r.By = id        // fill who execute it
 				out <- r
 				mtrs.StorageWorkerMessages.With(prometheus.Labels{"name": id}).Inc()
+				mtrs.StorageWorkerProcessingTime.With(
+					prometheus.Labels{"name": id},
+				).Observe(time.Since(startTime).Seconds())
 
 			case <-ctx.Done(): // When main routine cancel
 
@@ -524,6 +528,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				return // go out of the for loop
+
 			}
 		}
 	}()
