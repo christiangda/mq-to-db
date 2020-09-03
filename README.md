@@ -82,12 +82,6 @@ make
 
 ## docker-compose
 
-### Compile
-
-```bash
-make
-```
-
 ### Up
 
 ```bash
@@ -99,6 +93,14 @@ docker-compose up --build
 ```bash
 docker-compose down -v
 ```
+
+### Links
+
+* [mq-to-db-01 home page](http://localhost:8080/)
+* [mq-to-db-02 home page](http://localhost:8081/)
+* [Prometheus Dashboard](http://localhost:9090/)
+* [Grafana Dashboard](http://localhost:3000/)
+* [RabbitMQ Dashboard](http://localhost:15672/)
 
 ### Logs
 
@@ -195,6 +197,7 @@ __NOTES__ related to make
 * [https://eltonminetto.net/en/post/2020-03-13-golang-prometheus/](https://eltonminetto.net/en/post/2020-03-13-golang-prometheus/)
 * [https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/](https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/)
 * [https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42](https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42)
+* [https://dlmiddlecote.io/exposing-gos-sql-stats/](https://dlmiddlecote.io/exposing-gos-sql-stats/)
 
 ### Tests
 
