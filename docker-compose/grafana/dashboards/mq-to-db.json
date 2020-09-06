@@ -16,7 +16,7 @@
     "gnetId": null,
     "graphTooltip": 0,
     "id": 2,
-    "iteration": 1599121744571,
+    "iteration": 1599423674727,
     "links": [],
     "panels": [
         {
@@ -221,7 +221,7 @@
             "pluginVersion": "7.1.5",
             "targets": [
                 {
-                    "expr": "sum(mq_to_db_database_max_open_connections{job=\"mq-to-db\",instance=~\"$instance\"})",
+                    "expr": "sum(mq_to_db_db_max_open_conn{job=\"mq-to-db\",instance=~\"$instance\"})",
                     "interval": "",
                     "legendFormat": "",
                     "refId": "A"
@@ -274,7 +274,7 @@
             "pluginVersion": "7.1.5",
             "targets": [
                 {
-                    "expr": "sum(mq_to_db_database_open_connections{job=\"mq-to-db\",instance=~\"$instance\"})",
+                    "expr": "sum(mq_to_db_db_open_conn{job=\"mq-to-db\",instance=~\"$instance\"})",
                     "interval": "",
                     "legendFormat": "",
                     "refId": "A"
@@ -405,6 +405,100 @@
                 }
             ],
             "type": "table"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": null,
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {},
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 8,
+            "gridPos": {
+                "h": 7,
+                "w": 24,
+                "x": 0,
+                "y": 8
+            },
+            "hiddenSeries": false,
+            "id": 11,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "show": true,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "pluginVersion": "7.1.5",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "mq_to_db_storage_worker_process_time_seconds_sum/mq_to_db_storage_worker_process_time_seconds_count",
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "{{ name }}",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "Processing Duration",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "s",
+                    "label": null,
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "label": null,
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
         }
     ],
     "schemaVersion": 26,
@@ -435,7 +529,6 @@
                 "allValue": null,
                 "current": {
                     "selected": true,
-                    "tags": [],
                     "text": [
                         "All"
                     ],
@@ -465,7 +558,7 @@
         ]
     },
     "time": {
-        "from": "now-6h",
+        "from": "now-1h",
         "to": "now"
     },
     "timepicker": {
@@ -485,5 +578,5 @@
     "timezone": "",
     "title": "mq-to-db",
     "uid": "Azb-GKvMk",
-    "version": 2
+    "version": 1
 }
