@@ -106,17 +106,17 @@ func New(c *config.Config) *Metrics {
 		}),
 		DBMaxIdleClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_wait_duration_conn",
+			Name:      "db_max_idle_closed_conn",
 			Help:      "The total number of connections closed due to SetMaxIdleConns.",
 		}),
 		DBMaxIdleTimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_wait_duration_conn",
+			Name:      "db_max_idle_time_closed_conn",
 			Help:      "The total number of connections closed due to SetConnMaxIdleTime.",
 		}),
 		DBMaxLifetimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_wait_duration_conn",
+			Name:      "db_max_lifetime_closed_conn",
 			Help:      "The total number of connections closed due to SetConnMaxLifetime.",
 		}),
 
