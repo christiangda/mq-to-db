@@ -198,6 +198,7 @@ __NOTES__ related to make
 * [https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/](https://scot.coffee/2018/12/monitoring-go-applications-with-prometheus/)
 * [https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42](https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42)
 * [https://dlmiddlecote.io/exposing-gos-sql-stats/](https://dlmiddlecote.io/exposing-gos-sql-stats/)
+* [https://github.com/andrestc/demo-go-instrument](https://github.com/andrestc/demo-go-instrument)
 
 ### Tests
 
