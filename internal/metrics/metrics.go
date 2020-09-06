@@ -17,8 +17,15 @@ type Metrics struct {
 	Info prometheus.Gauge
 
 	// DB
-	DatabaseMaxOpenConnections prometheus.Gauge
-	DatabaseOpenConnections    prometheus.Gauge
+	DBMaxOpenConn           prometheus.Gauge
+	DBOpenConn              prometheus.Gauge
+	DBInUseConn             prometheus.Gauge
+	DBIdleConn              prometheus.Gauge
+	DBWaitCountConn         prometheus.Counter
+	DBWaitDurationConn      prometheus.Counter
+	DBMaxIdleClosedConn     prometheus.Counter
+	DBMaxIdleTimeClosedConn prometheus.Counter
+	DBMaxLifetimeClosedConn prometheus.Counter
 
 	// Consumers
 	ConsumerRunning  *prometheus.GaugeVec
@@ -67,15 +74,50 @@ func New(c *config.Config) *Metrics {
 		}),
 
 		// DB Metrics
-		DatabaseMaxOpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
+		DBMaxOpenConn: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "database_max_open_connections",
+			Name:      "db_max_open_conn",
 			Help:      "Maximum number of open connections to the database.",
 		}),
-		DatabaseOpenConnections: prometheus.NewGauge(prometheus.GaugeOpts{
+		DBOpenConn: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "database_open_connections",
+			Name:      "db_open_conn",
 			Help:      "The number of established connections both in use and idle.",
+		}),
+		DBInUseConn: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_in_use_conn",
+			Help:      "The number of connections currently in use.",
+		}),
+		DBIdleConn: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_idle_conn",
+			Help:      "The number of idle connections.",
+		}),
+		DBWaitCountConn: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_wait_count_conn",
+			Help:      "The total number of connections waited for.",
+		}),
+		DBWaitDurationConn: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_wait_duration_conn",
+			Help:      "The total time blocked waiting for a new connection.",
+		}),
+		DBMaxIdleClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_wait_duration_conn",
+			Help:      "The total number of connections closed due to SetMaxIdleConns.",
+		}),
+		DBMaxIdleTimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_wait_duration_conn",
+			Help:      "The total number of connections closed due to SetConnMaxIdleTime.",
+		}),
+		DBMaxLifetimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "db_wait_duration_conn",
+			Help:      "The total number of connections closed due to SetConnMaxLifetime.",
 		}),
 
 		// Consumers
@@ -129,8 +171,15 @@ func New(c *config.Config) *Metrics {
 	prometheus.MustRegister(mtrs.Info)
 
 	// DB
-	prometheus.MustRegister(mtrs.DatabaseMaxOpenConnections)
-	prometheus.MustRegister(mtrs.DatabaseOpenConnections)
+	prometheus.MustRegister(mtrs.DBMaxOpenConn)
+	prometheus.MustRegister(mtrs.DBOpenConn)
+	prometheus.MustRegister(mtrs.DBInUseConn)
+	prometheus.MustRegister(mtrs.DBIdleConn)
+	prometheus.MustRegister(mtrs.DBWaitCountConn)
+	prometheus.MustRegister(mtrs.DBWaitDurationConn)
+	prometheus.MustRegister(mtrs.DBMaxIdleClosedConn)
+	prometheus.MustRegister(mtrs.DBMaxIdleTimeClosedConn)
+	prometheus.MustRegister(mtrs.DBMaxLifetimeClosedConn)
 
 	// Consumers
 	prometheus.MustRegister(mtrs.ConsumerRunning)

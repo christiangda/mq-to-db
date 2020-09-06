@@ -368,8 +368,15 @@ func main() {
 	// Filling metrics
 	mtrs.Up.Add(1)
 	mtrs.Info.Add(1)
-	mtrs.DatabaseMaxOpenConnections.Add(float64(db.Stats().MaxOpenConnections))
-	mtrs.DatabaseOpenConnections.Add(float64(db.Stats().OpenConnections))
+	mtrs.DBMaxOpenConn.Add(float64(db.Stats().MaxOpenConnections))
+	mtrs.DBOpenConn.Add(float64(db.Stats().OpenConnections))
+	mtrs.DBInUseConn.Add(float64(db.Stats().InUse))
+	mtrs.DBIdleConn.Add(float64(db.Stats().Idle))
+	mtrs.DBWaitCountConn.Add(float64(db.Stats().WaitCount))
+	mtrs.DBWaitDurationConn.Add(float64(db.Stats().WaitDuration))
+	mtrs.DBMaxIdleClosedConn.Add(float64(db.Stats().MaxIdleClosed))
+	mtrs.DBMaxIdleTimeClosedConn.Add(float64(db.Stats().MaxIdleTimeClosed))
+	mtrs.DBMaxLifetimeClosedConn.Add(float64(db.Stats().MaxLifetimeClosed))
 
 	// Expose metrics, health checks and home
 	mux := http.NewServeMux()
