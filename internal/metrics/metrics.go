@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/christiangda/mq-to-db/internal/config"
+	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -12,20 +13,11 @@ import (
 type Metrics struct {
 	handler http.Handler
 
+	namespace string
+
 	// Global
 	Up   prometheus.Gauge
 	Info prometheus.Gauge
-
-	// DB
-	DBMaxOpenConn           prometheus.Gauge
-	DBOpenConn              prometheus.Gauge
-	DBInUseConn             prometheus.Gauge
-	DBIdleConn              prometheus.Gauge
-	DBWaitCountConn         prometheus.Counter
-	DBWaitDurationConn      prometheus.Counter
-	DBMaxIdleClosedConn     prometheus.Counter
-	DBMaxIdleTimeClosedConn prometheus.Counter
-	DBMaxLifetimeClosedConn prometheus.Counter
 
 	// Consumers
 	ConsumerRunning  *prometheus.GaugeVec
@@ -50,7 +42,8 @@ func New(c *config.Config) *Metrics {
 	// NOTE: Take care of metrics name
 	// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 	mtrs := &Metrics{
-		handler: h,
+		namespace: c.Application.MetricsNamespace,
+		handler:   h,
 
 		// Globla metrics
 		Up: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -71,53 +64,6 @@ func New(c *config.Config) *Metrics {
 				"branch":    c.Application.Branch,
 				"goversion": c.Application.GoVersion,
 			},
-		}),
-
-		// DB Metrics
-		DBMaxOpenConn: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_max_open_conn",
-			Help:      "Maximum number of open connections to the database.",
-		}),
-		DBOpenConn: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_open_conn",
-			Help:      "The number of established connections both in use and idle.",
-		}),
-		DBInUseConn: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_in_use_conn",
-			Help:      "The number of connections currently in use.",
-		}),
-		DBIdleConn: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_idle_conn",
-			Help:      "The number of idle connections.",
-		}),
-		DBWaitCountConn: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_wait_count_conn",
-			Help:      "The total number of connections waited for.",
-		}),
-		DBWaitDurationConn: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_wait_duration_conn",
-			Help:      "The total time blocked waiting for a new connection.",
-		}),
-		DBMaxIdleClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_max_idle_closed_conn",
-			Help:      "The total number of connections closed due to SetMaxIdleConns.",
-		}),
-		DBMaxIdleTimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_max_idle_time_closed_conn",
-			Help:      "The total number of connections closed due to SetConnMaxIdleTime.",
-		}),
-		DBMaxLifetimeClosedConn: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: c.Application.MetricsNamespace,
-			Name:      "db_max_lifetime_closed_conn",
-			Help:      "The total number of connections closed due to SetConnMaxLifetime.",
 		}),
 
 		// Consumers
@@ -166,20 +112,8 @@ func New(c *config.Config) *Metrics {
 	}
 
 	// Register prometheus metrics
-	// Globals
 	prometheus.MustRegister(mtrs.Up)
 	prometheus.MustRegister(mtrs.Info)
-
-	// DB
-	prometheus.MustRegister(mtrs.DBMaxOpenConn)
-	prometheus.MustRegister(mtrs.DBOpenConn)
-	prometheus.MustRegister(mtrs.DBInUseConn)
-	prometheus.MustRegister(mtrs.DBIdleConn)
-	prometheus.MustRegister(mtrs.DBWaitCountConn)
-	prometheus.MustRegister(mtrs.DBWaitDurationConn)
-	prometheus.MustRegister(mtrs.DBMaxIdleClosedConn)
-	prometheus.MustRegister(mtrs.DBMaxIdleTimeClosedConn)
-	prometheus.MustRegister(mtrs.DBMaxLifetimeClosedConn)
 
 	// Consumers
 	prometheus.MustRegister(mtrs.ConsumerRunning)
@@ -195,4 +129,11 @@ func New(c *config.Config) *Metrics {
 
 func (m Metrics) GetHandler() http.Handler {
 	return m.handler
+}
+
+func (m Metrics) EnableDBStats(db storage.Store) {
+
+	// DB Stats from database/sql
+	dbstats := NewDBMetricsCollector(m.namespace, "db", db)
+	prometheus.MustRegister(dbstats)
 }

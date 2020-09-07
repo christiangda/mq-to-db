@@ -41,12 +41,13 @@ func New(c *storage.Config) (storage.Store, error) {
 	pool.SetMaxIdleConns(c.MaxIdleConns)
 	pool.SetMaxOpenConns(c.MaxOpenConns)
 
-	return &pgsql{
+	out := &pgsql{
 		pool:            pool,
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
-	}, nil
+	}
 
+	return out, nil
 }
 
 // Connect returns a single connection by either opening a new connection
