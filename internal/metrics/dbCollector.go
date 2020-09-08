@@ -137,6 +137,7 @@ func (c *DBMetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- c.openConn
 	ch <- c.inUseConn
 	ch <- c.idleConn
+
 	ch <- c.waitCountConn
 	ch <- c.waitDurationConn
 	ch <- c.maxIdleClosedConn

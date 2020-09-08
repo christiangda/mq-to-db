@@ -2,9 +2,9 @@
 apiVersion: 1
 
 providers:
-  - name: "Prometheus"
+  - name: "mq-to-db"
     orgId: 1
-    folder: "Prometheus"
+    folder: "mq-to-db"
     folderUid: ""
     type: file
     disableDeletion: true
@@ -12,4 +12,4 @@ providers:
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
-      path: /grafana/dashboards/prometheus
+      path: /grafana/dashboards/mq-to-db
