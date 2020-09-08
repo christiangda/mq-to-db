@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Metrics ...
 type Metrics struct {
 	handler http.Handler
 
@@ -27,6 +28,20 @@ type Metrics struct {
 	StorageWorkerRunning        *prometheus.GaugeVec
 	StorageWorkerMessages       *prometheus.CounterVec
 	StorageWorkerProcessingTime *prometheus.HistogramVec
+
+	// Storer
+	StorerMessagesTotal              prometheus.Counter
+	StorerMessagesErrorsTotal        prometheus.Counter
+	StorerSQLMessagesTotal           prometheus.Counter
+	StorerSQLMessagesErrorsTotal     prometheus.Counter
+	StorerSQLMessagesToDBTotal       prometheus.Counter
+	StorerSQLMessagesToDBErrorsTotal prometheus.Counter
+
+	// Storage
+	StoragePingTotal        prometheus.Counter
+	StoragePingTimeOutTotal prometheus.Counter
+	StorageExecTotal        prometheus.Counter
+	StorageExecTimeOutTotal prometheus.Counter
 }
 
 // New return all the metrics
@@ -109,6 +124,60 @@ func New(c *config.Config) *Metrics {
 				// Storage Worker name
 				"name",
 			}),
+
+		// Storer
+		StorerMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_messages_total",
+			Help:      "Number of messages processed by storer."},
+		),
+		StorerMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_messages_errors_total",
+			Help:      "Number of messages with errors processed by storer."},
+		),
+		StorerSQLMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_sql_messages_total",
+			Help:      "Number of sql messages processed by storer."},
+		),
+		StorerSQLMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_sql_messages_errors_total",
+			Help:      "Number of sql messages with errors processed by storer."},
+		),
+		StorerSQLMessagesToDBTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_sql_messages_to_db_total",
+			Help:      "Number of sql messages sent to database by storer."},
+		),
+		StorerSQLMessagesToDBErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_sql_messages_to_db_errors_total",
+			Help:      "Number of sql messages with errors sent to database by storer."},
+		),
+
+		// Storage
+		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storage_ping_total",
+			Help:      "Number of ping executed by storage."},
+		),
+		StoragePingTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storage_ping_timeout_total",
+			Help:      "Number of ping with timeouts executed by storage."},
+		),
+		StorageExecTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storage_exec_total",
+			Help:      "Number of exec executed by storage."},
+		),
+		StorageExecTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storage_exec_timeout_total",
+			Help:      "Number of exec with timeouts executed by storage."},
+		),
 	}
 
 	// Register prometheus metrics
@@ -124,13 +193,29 @@ func New(c *config.Config) *Metrics {
 	prometheus.MustRegister(mtrs.StorageWorkerMessages)
 	prometheus.MustRegister(mtrs.StorageWorkerProcessingTime)
 
+	// Storer
+	prometheus.MustRegister(mtrs.StorerMessagesTotal)
+	prometheus.MustRegister(mtrs.StorerMessagesErrorsTotal)
+	prometheus.MustRegister(mtrs.StorerSQLMessagesTotal)
+	prometheus.MustRegister(mtrs.StorerSQLMessagesErrorsTotal)
+	prometheus.MustRegister(mtrs.StorerSQLMessagesToDBTotal)
+	prometheus.MustRegister(mtrs.StorerSQLMessagesToDBErrorsTotal)
+
+	// Storage
+	prometheus.MustRegister(mtrs.StoragePingTotal)
+	prometheus.MustRegister(mtrs.StoragePingTimeOutTotal)
+	prometheus.MustRegister(mtrs.StorageExecTotal)
+	prometheus.MustRegister(mtrs.StorageExecTimeOutTotal)
+
 	return mtrs
 }
 
+// GetHandler return the http handler for metrics endpoints
 func (m Metrics) GetHandler() http.Handler {
 	return m.handler
 }
 
+// EnableDBStats enable the database/sql stats metrics
 func (m Metrics) EnableDBStats(db storage.Store) {
 
 	// DB Stats from database/sql

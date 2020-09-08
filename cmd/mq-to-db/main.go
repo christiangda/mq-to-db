@@ -229,7 +229,7 @@ func main() {
 			ConnMaxLifetime: conf.Database.ConnMaxLifetime,
 			MaxIdleConns:    conf.Database.MaxIdleConns,
 			MaxOpenConns:    conf.Database.MaxOpenConns,
-		})
+		}, mtrs)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -315,7 +315,7 @@ func main() {
 	}
 
 	// storer to called it every time we need to store a consumer.Message into the database
-	strer := storer.New(appCtx, db)
+	strer := storer.New(appCtx, db, mtrs)
 
 	// Logic of channels for consumer and for storage
 	// it is a go pipeline model https://blog.golang.org/pipelines

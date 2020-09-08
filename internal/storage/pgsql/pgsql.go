@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/christiangda/mq-to-db/internal/logger"
+	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 )
@@ -17,10 +18,12 @@ type pgsql struct {
 
 	maxPingTimeOut  time.Duration
 	maxQueryTimeOut time.Duration
+
+	mtrs *metrics.Metrics
 }
 
 // New return
-func New(c *storage.Config) (storage.Store, error) {
+func New(c *storage.Config, mtrs *metrics.Metrics) (storage.Store, error) {
 
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Address,
@@ -45,6 +48,8 @@ func New(c *storage.Config) (storage.Store, error) {
 		pool:            pool,
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
+
+		mtrs: mtrs,
 	}
 
 	return out, nil
@@ -68,9 +73,11 @@ func (c *pgsql) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
 	defer cancel()
 
+	c.mtrs.StoragePingTotal.Inc()
 	err := c.pool.PingContext(ctx)
 
 	if ctx.Err() == context.DeadlineExceeded {
+		c.mtrs.StoragePingTimeOutTotal.Inc()
 		log.Warnf("Ping time out (%v) ", c.maxQueryTimeOut)
 		err = ctx.Err()
 	}
@@ -83,9 +90,11 @@ func (c *pgsql) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
 	defer cancel()
 
+	c.mtrs.StorageExecTotal.Inc()
 	res, err := c.pool.ExecContext(ctx, q)
 
 	if ctx.Err() == context.DeadlineExceeded {
+		c.mtrs.StorageExecTimeOutTotal.Inc()
 		log.Warnf("Query time out (%v) for: %s", c.maxQueryTimeOut, q)
 		return nil, ctx.Err()
 	}

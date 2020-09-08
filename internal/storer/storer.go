@@ -7,6 +7,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/messages"
+	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
 )
 
@@ -32,15 +33,17 @@ type Storer interface {
 
 // storerConf is a type of function that store the consumer.Messages
 type storerConf struct {
-	ctx context.Context
-	st  storage.Store
+	ctx  context.Context
+	st   storage.Store
+	mtrs *metrics.Metrics
 }
 
 // New ...
-func New(ctx context.Context, st storage.Store) Storer {
+func New(ctx context.Context, st storage.Store, mtrs *metrics.Metrics) Storer {
 	return &storerConf{
-		ctx: ctx,
-		st:  st,
+		ctx:  ctx,
+		st:   st,
+		mtrs: mtrs,
 	}
 }
 
@@ -49,8 +52,12 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 
 	log.Debugf("Processing message: %s", m.Payload)
 
+	s.mtrs.StorerMessagesTotal.Inc()
+	s.mtrs.StorerSQLMessagesTotal.Inc()
 	sqlm, err := messages.NewSQL(m.Payload) // serialize message payload as SQL message type
 	if err != nil {
+		s.mtrs.StorerMessagesErrorsTotal.Inc()
+		s.mtrs.StorerSQLMessagesErrorsTotal.Inc()
 		if err = m.Reject(false); err != nil {
 			return Results{
 				Error:   err,
@@ -67,8 +74,11 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
 
+	s.mtrs.StorerSQLMessagesToDBTotal.Inc()
 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
 	if err != nil {
+		s.mtrs.StorerMessagesErrorsTotal.Inc()
+		s.mtrs.StorerSQLMessagesToDBErrorsTotal.Inc()
 		if err = m.Reject(false); err != nil {
 			return Results{
 				Error:   err,
