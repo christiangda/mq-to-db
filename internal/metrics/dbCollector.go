@@ -4,15 +4,17 @@ import (
 	"database/sql"
 	"sync"
 
+	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// StatsGetter is an interface that gets sql.DBStats.
+// DBStatsGetter is an interface that gets sql.DBStats.
 // It's implemented by e.g. *sql.DB or *sqlx.DB.
 type DBStatsGetter interface {
 	Stats() sql.DBStats
 }
 
+// DBMetricsCollector ...
 type DBMetricsCollector struct {
 	dbsg  DBStatsGetter
 	mutex sync.RWMutex
@@ -29,7 +31,7 @@ type DBMetricsCollector struct {
 	maxLifetimeClosedConn prometheus.Counter
 }
 
-// New return all the metrics
+// NewDBMetricsCollector return all the metrics
 func NewDBMetricsCollector(namespace, subsystem string, db DBStatsGetter) *DBMetricsCollector {
 
 	// NOTE: Take care of metrics name
@@ -46,6 +48,7 @@ func NewDBMetricsCollector(namespace, subsystem string, db DBStatsGetter) *DBMet
 		}),
 		openConn: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
+			Subsystem: subsystem,
 			Name:      "open_conn",
 			Help:      "The number of established connections both in use and idle.",
 		}),
@@ -95,7 +98,7 @@ func NewDBMetricsCollector(namespace, subsystem string, db DBStatsGetter) *DBMet
 	return mtrs
 }
 
-// Describe ...
+// Describe implements the prometheus.Collector interface
 func (c *DBMetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 	// DB
 	ch <- c.maxOpenConn.Desc()
@@ -109,22 +112,26 @@ func (c *DBMetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.maxLifetimeClosedConn.Desc()
 }
 
-// Collect ...
+// Collect implements the prometheus.Collector interface
 func (c *DBMetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	s := c.dbsg.Stats()
+	dbStats := c.dbsg.Stats()
+	log.Debugf("Database statistics: %+v", dbStats)
 
-	c.maxOpenConn.Add(float64(s.MaxOpenConnections))
-	c.openConn.Add(float64(s.OpenConnections))
-	c.inUseConn.Add(float64(s.InUse))
-	c.idleConn.Add(float64(s.Idle))
-	c.waitCountConn.Add(float64(s.WaitCount))
-	c.waitDurationConn.Add(float64(s.WaitDuration))
-	c.maxIdleClosedConn.Add(float64(s.MaxIdleClosed))
-	c.maxIdleTimeClosedConn.Add(float64(s.MaxIdleTimeClosed))
-	c.maxLifetimeClosedConn.Add(float64(s.MaxLifetimeClosed))
+	// Gauges
+	c.maxOpenConn.Set(float64(dbStats.MaxOpenConnections))
+	c.openConn.Set(float64(dbStats.OpenConnections))
+	c.inUseConn.Set(float64(dbStats.InUse))
+	c.idleConn.Set(float64(dbStats.Idle))
+
+	// Counters
+	c.waitCountConn.Add(float64(dbStats.WaitCount))
+	c.waitDurationConn.Add(float64(dbStats.WaitDuration))
+	c.maxIdleClosedConn.Add(float64(dbStats.MaxIdleClosed))
+	c.maxIdleTimeClosedConn.Add(float64(dbStats.MaxIdleTimeClosed))
+	c.maxLifetimeClosedConn.Add(float64(dbStats.MaxLifetimeClosed))
 
 	ch <- c.maxOpenConn
 	ch <- c.openConn

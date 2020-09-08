@@ -1,7 +1,7 @@
 ---
 dispatcher:
-  consumerConcurrency: 4 # Number of go routines consuming messages from Queue
-  storageWorkers: 40 # Number of go routines sending messages to storage
+  consumerConcurrency: 2 # Number of go routines consuming messages from Queue
+  storageWorkers: 25 # Number of go routines sending messages to storage
 
 consumer:
   kind: rabbitmq
