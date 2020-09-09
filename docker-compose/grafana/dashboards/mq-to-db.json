@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1599589396610,
+  "iteration": 1599658869376,
   "links": [],
   "panels": [
     {
@@ -709,7 +709,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "$datasource",
       "fieldConfig": {
         "defaults": {
           "custom": {},
@@ -726,7 +726,7 @@
         "y": 14
       },
       "hiddenSeries": false,
-      "id": 11,
+      "id": 21,
       "legend": {
         "avg": false,
         "current": false,
@@ -744,17 +744,31 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "Average",
+          "color": "#C4162A",
+          "dashes": true,
+          "linewidth": 3
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "mq_to_db_storage_worker_process_time_seconds_sum{job=\"mq-to-db\",instance=~\"$instance\"}/mq_to_db_storage_worker_process_time_seconds_count{job=\"mq-to-db\",instance=~\"$instance\"}",
+          "expr": "mq_to_db_storage_worker_process_duration_seconds_sum{job=\"mq-to-db\",instance=~\"$instance\"}/mq_to_db_storage_worker_process_duration_seconds_count{job=\"mq-to-db\",instance=~\"$instance\"}",
           "interval": "",
-          "intervalFactor": 1,
+          "intervalFactor": 2,
           "legendFormat": "{{ name }}",
           "refId": "A"
+        },
+        {
+          "expr": "avg(mq_to_db_storage_worker_process_duration_seconds_sum{job=\"mq-to-db\",instance=~\"$instance\"}/mq_to_db_storage_worker_process_duration_seconds_count{job=\"mq-to-db\",instance=~\"$instance\"})",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Average",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -762,6 +776,114 @@
       "timeRegions": [],
       "timeShift": null,
       "title": "Workers Processing Duration",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "$datasource",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "fill": 0,
+      "fillGradient": 8,
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "hiddenSeries": false,
+      "id": 22,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "Average",
+          "color": "#FFF899",
+          "dashes": true,
+          "linewidth": 3
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.9, rate(mq_to_db_storage_worker_process_duration_seconds_bucket{job=\"mq-to-db\",instance=~\"$instance\"}[$interval]))",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{ name }}",
+          "refId": "A"
+        },
+        {
+          "expr": "avg(histogram_quantile(0.9, rate(mq_to_db_storage_worker_process_duration_seconds_bucket{job=\"mq-to-db\",instance=~\"$instance\"}[$interval])))",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Average",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": ".90 percentile for Workers Processing Duration",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -828,7 +950,6 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "tags": [],
           "text": [
             "All"
           ],

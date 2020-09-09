@@ -25,9 +25,9 @@ type Metrics struct {
 	ConsumerMessages *prometheus.CounterVec
 
 	// Storage Workers
-	StorageWorkerRunning        *prometheus.GaugeVec
-	StorageWorkerMessages       *prometheus.CounterVec
-	StorageWorkerProcessingTime *prometheus.HistogramVec
+	StorageWorkerRunning            *prometheus.GaugeVec
+	StorageWorkerMessages           *prometheus.CounterVec
+	StorageWorkerProcessingDuration *prometheus.HistogramVec
 
 	// Storer
 	StorerMessagesTotal              prometheus.Counter
@@ -36,6 +36,8 @@ type Metrics struct {
 	StorerSQLMessagesErrorsTotal     prometheus.Counter
 	StorerSQLMessagesToDBTotal       prometheus.Counter
 	StorerSQLMessagesToDBErrorsTotal prometheus.Counter
+	StorerMessagesAckTotal           prometheus.Counter
+	StorerMessagesRejectedTotal      prometheus.Counter
 
 	// Storage
 	StoragePingTotal        prometheus.Counter
@@ -60,7 +62,7 @@ func New(c *config.Config) *Metrics {
 		namespace: c.Application.MetricsNamespace,
 		handler:   h,
 
-		// Globla metrics
+		// Global metrics
 		Up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "up",
@@ -116,10 +118,12 @@ func New(c *config.Config) *Metrics {
 				// Storage Worker name
 				"name",
 			}),
-		StorageWorkerProcessingTime: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		StorageWorkerProcessingDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: c.Application.MetricsNamespace,
-			Name:      "storage_worker_process_time_seconds",
-			Help:      "Amount of time spent storing messages"},
+			Name:      "storage_worker_process_duration_seconds",
+			Help:      "Amount of time spent storing messages",
+			Buckets:   []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15}, // Observation buckets
+		},
 			[]string{
 				// Storage Worker name
 				"name",
@@ -156,6 +160,16 @@ func New(c *config.Config) *Metrics {
 			Name:      "storer_sql_messages_to_db_errors_total",
 			Help:      "Number of sql messages with errors sent to database by storer."},
 		),
+		StorerMessagesAckTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_messages_ack_total",
+			Help:      "Number of messages ack into mq system."},
+		),
+		StorerMessagesRejectedTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: c.Application.MetricsNamespace,
+			Name:      "storer_messages_rejected_total",
+			Help:      "Number of messages rejected into mq system."},
+		),
 
 		// Storage
 		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
@@ -181,6 +195,7 @@ func New(c *config.Config) *Metrics {
 	}
 
 	// Register prometheus metrics
+	// Global
 	prometheus.MustRegister(mtrs.Up)
 	prometheus.MustRegister(mtrs.Info)
 
@@ -191,7 +206,7 @@ func New(c *config.Config) *Metrics {
 	// Storage Workers
 	prometheus.MustRegister(mtrs.StorageWorkerRunning)
 	prometheus.MustRegister(mtrs.StorageWorkerMessages)
-	prometheus.MustRegister(mtrs.StorageWorkerProcessingTime)
+	prometheus.MustRegister(mtrs.StorageWorkerProcessingDuration)
 
 	// Storer
 	prometheus.MustRegister(mtrs.StorerMessagesTotal)
@@ -200,6 +215,8 @@ func New(c *config.Config) *Metrics {
 	prometheus.MustRegister(mtrs.StorerSQLMessagesErrorsTotal)
 	prometheus.MustRegister(mtrs.StorerSQLMessagesToDBTotal)
 	prometheus.MustRegister(mtrs.StorerSQLMessagesToDBErrorsTotal)
+	prometheus.MustRegister(mtrs.StorerMessagesAckTotal)
+	prometheus.MustRegister(mtrs.StorerMessagesRejectedTotal)
 
 	// Storage
 	prometheus.MustRegister(mtrs.StoragePingTotal)
@@ -219,6 +236,6 @@ func (m Metrics) GetHandler() http.Handler {
 func (m Metrics) EnableDBStats(db storage.Store) {
 
 	// DB Stats from database/sql
-	dbstats := NewDBMetricsCollector(m.namespace, "db", db)
-	prometheus.MustRegister(dbstats)
+	dbStats := NewDBMetricsCollector(m.namespace, "db", db)
+	prometheus.MustRegister(dbStats)
 }

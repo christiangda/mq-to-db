@@ -67,7 +67,7 @@ docker logs postgresql -f
 docker stop postgresql
 ```
 
-### mq-to-db
+### mq-to-db application
 
 ```bash
 go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
@@ -102,7 +102,7 @@ docker-compose down -v
 * [Grafana Dashboard](http://localhost:3000/)
 * [RabbitMQ Dashboard](http://localhost:15672/)
 
-### Logs
+### See the Logs
 
 ```bash
 docker-compose logs mq-to-db-01
@@ -178,7 +178,7 @@ __NOTES__ related to make
 
 * [https://blog.gopheracademy.com/advent-2014/configuration-with-fangs/](https://blog.gopheracademy.com/advent-2014/configuration-with-fangs/)
 
-### RabbitMQ
+### About RabbitMQ
 
 * [https://gigi.nullneuron.net/gigilabs/rabbitmq-who-creates-the-queues-and-exchanges/](https://gigi.nullneuron.net/gigilabs/rabbitmq-who-creates-the-queues-and-exchanges/)
 * [https://www.rabbitmq.com/queues.html#optional-arguments](https://www.rabbitmq.com/queues.html#optional-arguments)
@@ -187,7 +187,7 @@ __NOTES__ related to make
 * [https://www.rabbitmq.com/tutorials/tutorial-one-go.html](https://www.rabbitmq.com/tutorials/tutorial-one-go.html)
 * [http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang](http://www.inanzzz.com/index.php/post/0aeg/creating-a-rabbitmq-producer-example-with-golang)
 
-### Logs
+### About Logs
 
 * [https://github.com/sirupsen/logrus](https://github.com/sirupsen/logrus)
 
@@ -199,6 +199,8 @@ __NOTES__ related to make
 * [https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42](https://dev.to/ahmedash95/understand-golang-channels-and-how-to-monitor-with-grafana-part-2-2-3o42)
 * [https://dlmiddlecote.io/exposing-gos-sql-stats/](https://dlmiddlecote.io/exposing-gos-sql-stats/)
 * [https://github.com/andrestc/demo-go-instrument](https://github.com/andrestc/demo-go-instrument)
+* [https://blog.pvincent.io/2017/12/prometheus-blog-series-part-4-instrumenting-code-in-go-and-java/](https://blog.pvincent.io/2017/12/prometheus-blog-series-part-4-instrumenting-code-in-go-and-java/)
+* [https://blog.pvincent.io/2017/12/prometheus-blog-series-part-2-metric-types/](https://blog.pvincent.io/2017/12/prometheus-blog-series-part-2-metric-types/)
 
 ### Tests
 

@@ -53,12 +53,17 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	log.Debugf("Processing message: %s", m.Payload)
 
 	s.mtrs.StorerMessagesTotal.Inc()
-	s.mtrs.StorerSQLMessagesTotal.Inc()
+
 	sqlm, err := messages.NewSQL(m.Payload) // serialize message payload as SQL message type
 	if err != nil {
+
 		s.mtrs.StorerMessagesErrorsTotal.Inc()
 		s.mtrs.StorerSQLMessagesErrorsTotal.Inc()
+
 		if err = m.Reject(false); err != nil {
+
+			s.mtrs.StorerMessagesRejectedTotal.Inc()
+
 			return Results{
 				Error:   err,
 				Content: m.MessageID,
@@ -73,13 +78,18 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	}
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
+	s.mtrs.StorerSQLMessagesTotal.Inc()
 
-	s.mtrs.StorerSQLMessagesToDBTotal.Inc()
 	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
 	if err != nil {
+
 		s.mtrs.StorerMessagesErrorsTotal.Inc()
 		s.mtrs.StorerSQLMessagesToDBErrorsTotal.Inc()
+
 		if err = m.Reject(false); err != nil {
+
+			s.mtrs.StorerMessagesRejectedTotal.Inc()
+
 			return Results{
 				Error:   err,
 				Content: m.MessageID,
@@ -93,9 +103,14 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 		}
 	}
 
+	s.mtrs.StorerSQLMessagesToDBTotal.Inc()
+
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err = m.Reject(false); err != nil {
+
+			s.mtrs.StorerMessagesRejectedTotal.Inc()
+
 			return Results{
 				Error:   err,
 				Content: m.MessageID,
@@ -112,6 +127,9 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 
 	if err := m.Ack(); err != nil {
 		if err = m.Reject(false); err != nil {
+
+			s.mtrs.StorerMessagesRejectedTotal.Inc()
+
 			return Results{
 				Error:   err,
 				Content: m.MessageID,
@@ -125,6 +143,7 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 		}
 	}
 	log.Debugf("Ack the message: %s", sqlm.ToJSON())
+	s.mtrs.StorerMessagesAckTotal.Inc()
 
 	return Results{RowsAffected: rows}
 }

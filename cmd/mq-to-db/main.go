@@ -390,7 +390,7 @@ func main() {
 	}
 	httpServer.SetKeepAlivesEnabled(conf.Server.KeepAlivesEnabled)
 
-	// start httpserver in a go rutine
+	// start httpserver in a go routine
 	go func() {
 
 		log.WithFields(logrus.Fields{
@@ -513,11 +513,14 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 
 			case m := <-chanMsgs:
 				startTime := time.Now()
+
 				r := st.Store(m) // proccess and storage message into db
 				r.By = id        // fill who execute it
 				out <- r
+
 				mtrs.StorageWorkerMessages.With(prometheus.Labels{"name": id}).Inc()
-				mtrs.StorageWorkerProcessingTime.With(
+
+				mtrs.StorageWorkerProcessingDuration.With(
 					prometheus.Labels{"name": id},
 				).Observe(time.Since(startTime).Seconds())
 
@@ -601,7 +604,7 @@ func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <
 	return out
 }
 
-//
+// HomePage render the home page website
 func HomePage(w http.ResponseWriter, r *http.Request) {
 	indexHTMLTmpl := `
 <html>
@@ -652,6 +655,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HealthCheck render the health check endpoint for the whole application
 // TODO: Implement the health check, when database fail or consumer fail
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
