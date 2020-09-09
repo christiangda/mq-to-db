@@ -1,0 +1,44 @@
+name: Develop workflow
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+
+jobs:
+
+  build_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Show Project Files Before Make
+        run: ls -la
+
+      - name: Build and Test
+        run: make
+
+      - name: Show Project Files After Make
+        run: ls -la
+
+      - name: Check code modifications
+        run: git diff --exit-code
+
+      - name: Remove artifacts
+        run: make clean
