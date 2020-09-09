@@ -9,7 +9,7 @@ RUN apt install -y git gcc make
 ADD . /src
 RUN cd /src && make
 
-# ----------
+# app stage
 FROM ${ARCH}/busybox:glibc
 
 LABEL maintainer="Mantainer User <mantainer.user@mail.com>" \

@@ -1,4 +1,4 @@
-name: Develop workflow
+name: Develop branch workflow
 
 on:
   push:
@@ -37,8 +37,8 @@ jobs:
       - name: Show Project Files After Make
         run: ls -la
 
-      - name: Check code modifications
-        run: git diff --exit-code
+      # - name: Check code modifications
+      #   run: git diff --exit-code
 
       - name: Remove artifacts
         run: make clean

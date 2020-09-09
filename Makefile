@@ -25,6 +25,7 @@ GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/versi
 
 # Container
 CONTAINER_BUILD_COMMAND ?= docker build
+CONTAINER_PUBLISH_COMMAND ?= docker push
 CONTAINER_BUILD_FILE ?= ./Dockerfile
 CONTAINER_BUILD_CONTEXT ?= ./
 CONTAINER_IMAGE_ARCH ?= amd64
@@ -94,3 +95,12 @@ container-build:
 		--file $(CONTAINER_BUILD_FILE) \
 		$(CONTAINER_BUILD_CONTEXT)
 
+.PHONY: container-publish
+container-publish:
+	@echo "--> Building container image"
+	$(CONTAINER_PUBLISH_COMMAND) "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
+
+.PHONY: container-manifest
+container-manifest:
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create -a "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
