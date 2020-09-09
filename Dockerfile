@@ -22,8 +22,8 @@ EXPOSE ${METRICS_PORT}
 
 RUN mkdir -p /home/nobody && \
     mkdir -p /etc/mq-to-db && \
-    chown -R nobody.nogroup /home/nobody && \
-    chown -R nobody.nogroup /etc/mq-to-db
+    chown -R nobody.nobody /home/nobody && \
+    chown -R nobody.nobody /etc/mq-to-db
 
 ENV HOME="/home/nobody"
 
