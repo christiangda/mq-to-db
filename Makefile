@@ -26,6 +26,7 @@ GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/versi
 # Container
 CONTAINER_BUILD_COMMAND ?= docker build
 CONTAINER_PUBLISH_COMMAND ?= docker push
+CONTAINER_TAG_COMMAND ?= docker tag
 CONTAINER_BUILD_FILE ?= ./Dockerfile
 CONTAINER_BUILD_CONTEXT ?= ./
 CONTAINER_IMAGE_ARCH ?= amd64
@@ -97,8 +98,13 @@ container-build:
 
 .PHONY: container-publish
 container-publish:
-	@echo "--> Building container image"
+	@echo "--> Publishing container image"
 	$(CONTAINER_PUBLISH_COMMAND) "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
+
+.PHONY: container-tag-latest
+container-tag-latest:
+	@echo "--> Tagging container as latest"
+	$(CONTAINER_TAG_COMMAND) "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)" "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):latest"
 
 .PHONY: container-manifest
 container-manifest:

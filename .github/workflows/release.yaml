@@ -1,0 +1,184 @@
+name: Release workflow
+
+on:
+  push:
+    tags:
+      - v[012].[0-9]+.[0-9]+ # https://help.github.com/es/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+
+env:
+  DOCKER_HUB_REPO: "docker.io/christiangda"
+  DOCKER_BUILD_ARCHS: "amd64"
+  GO_VERSION: 1.15
+
+jobs:
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Test Linux Platform Only
+        run: make go-test
+
+      # - name: Check code modifications
+      #   run: git diff --exit-code
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Build Cross-Platform
+        run: make
+
+      - name: List Workspace Files
+        run: ls -la .
+
+      # - name: List .build Files
+      #   run: ls -la .build
+
+      # - name: Upload .build artifacts
+      #   uses: actions/upload-artifact@v1
+      #   with:
+      #     name: .build
+      #     path: .build
+
+  publish_docker_images:
+    name: Publish Docker Images
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Docker Version
+        run: docker version
+
+      # - name: Download .build artifacts from Build Step
+      #   uses: actions/download-artifact@v1
+      #   with:
+      #     name: .build
+      #     path: .build
+
+      # - name: Assign Execution Permission to Binaries
+      #   run: chmod -R +x .build/*/*
+
+      - name: List Workspace Files
+        run: ls -la .
+
+      # - name: List .build Files
+      #   run: ls -la .build
+
+      - name: Set Env Var RELEASE_VERSION
+        run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+
+      - name: Show RELEASE_VERSION
+        run: echo $RELEASE_VERSION
+
+      - name: Build Docker Images
+        run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Docker Tag Images Latest
+        run: make container-tag-latest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Show Local Docker Images
+        run: docker images
+
+      - name: Logging in Docker Hub
+        run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
+
+      - name: Publish Images in Docker Hub
+        run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Publish Manifest in Docker Hub
+        run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+  create_release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            See the file: CHANGELOG.md
+          draft: false
+          prerelease: false
+
+  publish_tarballs:
+    name: Publish Tarballs
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      # - name: Download .build artifacts from Build Step
+      #   uses: actions/download-artifact@v1
+      #   with:
+      #     name: .build
+      #     path: .build
+
+      # - name: Assign Execution Permission to Binaries
+      #   run: chmod -R +x .build/*/*
+
+      - name: List Workspace Files
+        run: ls -la .
+
+      # - name: List .build Files
+      #   run: ls -la .build
+
+      # - name: Build Tarballs Files
+      #   run: promu crossbuild tarballs
+
+      # - name: Checksum Tarballs Files
+      #   run: promu checksum .tarballs
+
+      # - name: Release Tarballs Files
+      #   run: promu release -v .tarballs
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Upload Artifacts to Github
+      #   uses: actions/upload-artifact@v1
+      #   with:
+      #     name: releases
+      #     path: .tarballs
