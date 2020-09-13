@@ -38,5 +38,5 @@ VOLUME [ "/home/nobody", "/etc/mq-to-db"]
 USER nobody
 WORKDIR ${HOME}
 
-#ENTRYPOINT [ "/bin/mq-to-db" ]
-CMD  [ "/bin/mq-to-db" ]
+ENTRYPOINT [ "/bin/mq-to-db" ]
+#CMD  [ "/bin/mq-to-db" ]

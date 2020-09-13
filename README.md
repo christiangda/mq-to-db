@@ -16,6 +16,7 @@ This is a [Golang (go)](https://golang.org/) program to read from a Message Queu
 
 * The number of queue consumers could be different from the numbers of storage workers
 * The process (job) of consume one message from queue and store into the database is synchronous because every message needs to be acknowledge (confirm as storage).
+* pprof enabled via --profile cmd line
 * Prometheus metrics for consumers, storage workers, go statistics and database.
 * Grafana dashboard for prometheus metrics
 * Dockerfile multi-stage build
@@ -80,6 +81,15 @@ make
 ./mq-to-db --configFile config-sample.yaml
 ```
 
+### http endpoint
+
+The application expose different endpoints via http server
+
+* http://localhost:8080/
+* http://localhost:8080/metrics
+* http://localhost:8080/health
+* http://localhost:8080/debug/pprof
+
 ## docker-compose
 
 ### Up
@@ -92,6 +102,20 @@ docker-compose up --build
 
 ```bash
 docker-compose down -v
+```
+
+### Profiling
+
+```bash
+# terminal 1, for mq-to-db-01 inside the docker-compose-file
+go tool pprof http://127.0.0.1:8080/debug/pprof/goroutine
+
+# terminal 2, for mq-to-db-02 inside the docker-compose-file
+go tool pprof http://127.0.0.1:8081/debug/pprof/goroutine
+
+
+# once you are into tool pprof, execute the command web
+(pprof) web
 ```
 
 ### Links

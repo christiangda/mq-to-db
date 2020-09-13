@@ -97,8 +97,11 @@ services:
     volumes:
       - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
     environment:
-      #SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
+      SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
       SERVER_PORT: 8080
+    command:
+      - --profile
+      #- --debug
     ports:
       - 8080:8080
     links:
@@ -123,8 +126,11 @@ services:
     volumes:
       - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml
     environment:
-      #SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
+      SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
       SERVER_PORT: 8081
+    command:
+      - --profile
+      #- --debug
     ports:
       - 8081:8081
     links:

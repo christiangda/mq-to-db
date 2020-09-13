@@ -31,6 +31,7 @@ type Config struct {
 		KeepAlivesEnabled bool          `json:"keepAlivesEnabled" yaml:"keepAlivesEnabled"`
 		LogFormat         string        `json:"logFormat" yaml:"logFormat"`
 		Debug             bool          `json:"debug" yaml:"debug"`
+		Profile           bool          `json:"profile" yaml:"profile"`
 	}
 
 	Dispatcher struct {

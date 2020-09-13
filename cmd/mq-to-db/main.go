@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -80,6 +81,7 @@ func init() { // package initializer
 	flag.DurationVar(&conf.Server.ShutdownTimeout, "server.shutdownTimeout", 30*time.Second, "Server ShutdownTimeout")
 	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "server.keepAlivesEnabled", true, "Server KeepAlivesEnabled")
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
+	flag.BoolVar(&conf.Server.Profile, "profile", false, "Enable program profile")
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
 	// Application conf flags
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
@@ -379,6 +381,20 @@ func main() {
 	// health check handler
 	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
 
+	// Profilling endpoints whe -profile or --profile
+	if conf.Server.Profile {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/heap", pprof.Index)
+		mux.HandleFunc("/debug/pprof/mutex", pprof.Index)
+		mux.HandleFunc("/debug/pprof/goroutine", pprof.Index)
+		mux.HandleFunc("/debug/pprof/threadcreate", pprof.Index)
+		mux.HandleFunc("/debug/pprof/block", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
+
 	// http server conf
 	httpServer := &http.Server{
 		ReadTimeout:       conf.Server.ReadTimeout,
@@ -619,11 +635,18 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		<li><a href="{{.MetricsPath}}">{{.MetricsPath}}</a></li>
 		<li><a href="{{.HealthPath}}">{{.HealthPath}}</a></li>
 	</ul>
+
 	<h2>Version</h2>
 	<ul>
 		<li>{{.VersionInfo}}</li>
 		<li>{{.BuildInfo}}</li>
 	</ul>
+
+	<h2>Go profile is enabled</h2>
+	<ul>
+		<li><a href="{{.ProfileLink}}">{{.ProfileLink}}</a></li>
+	</ul>
+	
 
 	<h3><a href="https://prometheus.io/">If you want to know more about Metrics and Exporters go to https://prometheus.io</a></h3>
 </body>
@@ -638,6 +661,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		HealthPath    string
 		VersionInfo   string
 		BuildInfo     string
+		ProfileLink   string
 	}{
 		conf.Application.Name,
 		conf.Application.Name,
@@ -647,6 +671,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		conf.Application.HealthPath,
 		conf.Application.VersionInfo,
 		conf.Application.BuildInfo,
+		"/debug/pprof/",
 	}
 
 	t := template.Must(template.New("index").Parse(indexHTMLTmpl))
