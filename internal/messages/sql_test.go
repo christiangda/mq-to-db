@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -135,12 +136,28 @@ func TestSQL_ToJSON(t *testing.T) {
 			if got := m.ToJSON(); got != tt.want {
 				t.Errorf("SQL.ToJSON() = %v, want %v", got, tt.want)
 			}
+			if !bytes.Equal([]byte(m.ToJSON()), []byte(tt.want)) {
+				t.Errorf("bytes of SQL.ToJSON() != bytes of %v", tt.want)
+			}
 		})
 	}
 }
 
-/*
 func TestSQL_ToYAML(t *testing.T) {
+	yamlFile := `TYPE: SQL
+CONTENT:
+    SERVER: localhost
+    DB: postgresql
+    USER: postgres
+    PASS: mysecretpassword
+    SENTENCE: SELECT pg_sleep(1);
+DATE: 2020-01-01 00:00:01.000000-1
+APPID: test
+ADITIONAL: "null"
+ACK: false
+RESPONSE: "null"
+`
+
 	type fields struct {
 		Kind    string
 		Content struct {
@@ -184,18 +201,7 @@ func TestSQL_ToYAML(t *testing.T) {
 				ACK:        false,
 				Response:   "null",
 			},
-			want: `TYPE: SQL
-            CONTENT:
-                SERVER: localhost
-                DB: postgresql
-                USER: postgres
-                PASS: mysecretpassword
-                SENTENCE: SELECT pg_sleep(1);
-            DATE: 2020-01-01 00:00:01.000000-1
-            APPID: test
-            ADITIONAL: "null"
-            ACK: false
-            RESPONSE: "null"`,
+			want: yamlFile,
 		},
 	}
 	for _, tt := range tests {
@@ -224,10 +230,12 @@ func TestSQL_ToYAML(t *testing.T) {
 			if got := m.ToYAML(); got != tt.want {
 				t.Errorf("SQL.ToYAML() = %v, want %v", got, tt.want)
 			}
+			if !bytes.Equal([]byte(m.ToYAML()), []byte(tt.want)) {
+				t.Errorf("bytes of SQL.ToYAML() != bytes of %v", tt.want)
+			}
 		})
 	}
 }
-*/
 
 func TestSQL_ValidDataConn(t *testing.T) {
 	type fields struct {
