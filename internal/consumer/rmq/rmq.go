@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"sync"
 	"time"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
@@ -162,12 +163,14 @@ func (c *rmq) Consume(id string) (<-chan consumer.Messages, error) {
 		return nil, err
 	}
 
+	var wg sync.WaitGroup
 	// This channels is used to be filled by messages comming from
 	// the queue system
 	// This is part of "producer-consume queue pattern"
-	out := make(chan consumer.Messages)
+	out := make(chan consumer.Messages, len(msgs)+1)
 
 	// NOTE: This is necessary to consume the original channel without blocking it
+	wg.Add(1)
 	go func() {
 		for d := range msgs {
 			out <- consumer.Messages{
@@ -180,6 +183,7 @@ func (c *rmq) Consume(id string) (<-chan consumer.Messages, error) {
 			}
 		}
 		close(out)
+		wg.Done()
 	}()
 
 	return out, nil
