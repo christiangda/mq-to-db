@@ -124,6 +124,9 @@ jobs:
       - name: Build Docker Images for Github Packages
         run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
 
+      - name: Show Local Docker Images
+        run: docker images
+
       - name: Logging in GitHub Packages
         run: echo ${{ secrets.GH_PASSWORD }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
          

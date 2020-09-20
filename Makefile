@@ -99,7 +99,7 @@ container-build:
 .PHONY: container-publish
 container-publish:
 	@echo "--> Publishing container image"
-	$(CONTAINER_PUBLISH_COMMAND) "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
+	$(CONTAINER_PUBLISH_COMMAND) $(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)
 
 .PHONY: container-tag-latest
 container-tag-latest:
