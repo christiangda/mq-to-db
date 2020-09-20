@@ -36,7 +36,7 @@ This is a close image of how it works:
 
 ## How to execute
 
-There are many ways to do it, but always is necessary `PostgreSQL` and `RabbitMQ` dependencies, but the easy way to see how it works is using containers.
+There are many ways to do it, but always is necessary `PostgreSQL` and `RabbitMQ` dependencies, the easy way to see how it works is using containers.
 
 ### docker-compose
 
