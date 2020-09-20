@@ -12,7 +12,8 @@ import (
 	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 )
 
-type pgsql struct {
+// PGSQL is a implementation go storage.Store interface
+type PGSQL struct {
 	pool *sql.DB
 	conn *sql.Conn
 
@@ -23,7 +24,7 @@ type pgsql struct {
 }
 
 // New return
-func New(c *storage.Config, mtrs *metrics.Metrics) (storage.Store, error) {
+func New(c *storage.Config, mtrs *metrics.Metrics) (*PGSQL, error) {
 
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Address,
@@ -44,7 +45,7 @@ func New(c *storage.Config, mtrs *metrics.Metrics) (storage.Store, error) {
 	pool.SetMaxIdleConns(c.MaxIdleConns)
 	pool.SetMaxOpenConns(c.MaxOpenConns)
 
-	out := &pgsql{
+	out := &PGSQL{
 		pool:            pool,
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
@@ -57,7 +58,7 @@ func New(c *storage.Config, mtrs *metrics.Metrics) (storage.Store, error) {
 
 // Connect returns a single connection by either opening a new connection
 // or returning an existing connection from the connection pool.
-func (c *pgsql) Connect(ctx context.Context) error {
+func (c *PGSQL) Connect(ctx context.Context) error {
 
 	conn, err := c.pool.Conn(ctx)
 	c.conn = conn
@@ -68,7 +69,7 @@ func (c *pgsql) Connect(ctx context.Context) error {
 
 // Ping verifies a connection to the database is still alive,
 // establishing a connection if necessary.
-func (c *pgsql) Ping(ctx context.Context) error {
+func (c *PGSQL) Ping(ctx context.Context) error {
 
 	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
 	defer cancel()
@@ -85,7 +86,7 @@ func (c *pgsql) Ping(ctx context.Context) error {
 }
 
 // ExecContext executes a query without returning any rows.
-func (c *pgsql) ExecContext(ctx context.Context, q string) (sql.Result, error) {
+func (c *PGSQL) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
 	defer cancel()
@@ -103,11 +104,11 @@ func (c *pgsql) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 }
 
 // Close closes the database and prevents new queries from starting.
-func (c *pgsql) Close() error {
+func (c *PGSQL) Close() error {
 	return c.pool.Close()
 }
 
 // Close closes the database and prevents new queries from starting.
-func (c *pgsql) Stats() sql.DBStats {
+func (c *PGSQL) Stats() sql.DBStats {
 	return c.pool.Stats()
 }
