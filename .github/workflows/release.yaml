@@ -99,7 +99,7 @@ jobs:
       - name: Show RELEASE_VERSION
         run: echo $RELEASE_VERSION
 
-      - name: Build Docker Images
+      - name: Build Docker Images for docker hub
         run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Docker Tag Images Latest
@@ -116,6 +116,12 @@ jobs:
 
       # - name: Publish Manifest in Docker Hub
       #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Build Docker Images for Github Packages
+        run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Docker Tag Images Latest
+        run: make container-tag-latest CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS      
 
       - name: Logging in GitHub Packages
         run: echo ${{ secrets.GH_PASSWORD }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin

@@ -1,6 +1,6 @@
 # build stage
 ARG ARCH="amd64"
-ARG PROJECT_NAME="mq-to-db"
+ARG APP_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
 ARG GO_VERSION="1.15"
@@ -13,9 +13,9 @@ FROM ${ARCH}/busybox:glibc
 
 LABEL maintainer="Mantainer User <mantainer.user@mail.com>" \
       org.opencontainers.image.authors="Mantainer User <mantainer.user@mail.com>" \
-      org.opencontainers.image.url="https://github.com/christiangda/${PROJECT_NAME}" \
-      org.opencontainers.image.documentation="https://github.com/christiangda/${PROJECT_NAME}" \
-      org.opencontainers.image.source="https://github.com/christiangda/${PROJECT_NAME}"
+      org.opencontainers.image.url="https://github.com/christiangda/${APP_NAME}" \
+      org.opencontainers.image.documentation="https://github.com/christiangda/${APP_NAME}" \
+      org.opencontainers.image.source="https://github.com/christiangda/${APP_NAME}"
 
 EXPOSE ${METRICS_PORT}
 
