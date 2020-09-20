@@ -40,7 +40,10 @@ type RMQ struct {
 // New create a new rabbitmq consumer with implements consumer.Consumer interface
 func New(c *consumer.Config) (*RMQ, error) {
 
-	uri := c.GetURI()
+	uri, err := c.GetURI()
+	if err != nil {
+		return nil, err
+	}
 
 	return &RMQ{
 		name:               c.Name,
