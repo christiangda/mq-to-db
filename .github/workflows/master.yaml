@@ -119,7 +119,7 @@ jobs:
         run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Publish Manifest in Docker Hub
-        run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Logging in GitHub Packages
         run: cat ~/GH_TOKEN.txt | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
