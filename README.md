@@ -64,6 +64,27 @@ After docker-compose start all the services, you have the following links ready 
 * [Grafana Dashboard](http://localhost:3000/)
 * [RabbitMQ Dashboard](http://localhost:15672/)
 
+#### Profiling
+
+```bash
+# terminal 1, for mq-to-db-01 inside the docker-compose-file
+go tool pprof http://127.0.0.1:8080/debug/pprof/goroutine
+
+# terminal 2, for mq-to-db-02 inside the docker-compose-file
+go tool pprof http://127.0.0.1:8081/debug/pprof/goroutine
+
+
+# once you are into tool pprof, execute the command web
+(pprof) web
+```
+
+#### See the Logs
+
+```bash
+docker-compose logs mq-to-db-01
+docker-compose logs mq-to-db-02
+```
+
 ### Manually
 
 First install dependencies
@@ -151,27 +172,6 @@ The application expose different endpoints via http server
 * [http://localhost:8080/metrics](http://localhost:8080/metrics)
 * [http://localhost:8080/health](http://localhost:8080/health)
 * [http://localhost:8080/debug/pprof](http://localhost:8080/debug/pprof)
-
-### Profiling
-
-```bash
-# terminal 1, for mq-to-db-01 inside the docker-compose-file
-go tool pprof http://127.0.0.1:8080/debug/pprof/goroutine
-
-# terminal 2, for mq-to-db-02 inside the docker-compose-file
-go tool pprof http://127.0.0.1:8081/debug/pprof/goroutine
-
-
-# once you are into tool pprof, execute the command web
-(pprof) web
-```
-
-### See the Logs
-
-```bash
-docker-compose logs mq-to-db-01
-docker-compose logs mq-to-db-02
-```
 
 ## How to build
 
