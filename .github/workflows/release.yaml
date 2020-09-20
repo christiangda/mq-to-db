@@ -124,7 +124,7 @@ jobs:
         run: make container-tag-latest CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS      
 
       - name: Logging in GitHub Packages
-        run: echo ${{ secrets.GH_PASSWORD }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
+        run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
          
       - name: Publish Images in GitHub Packages
         run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
