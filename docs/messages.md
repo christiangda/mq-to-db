@@ -1,8 +1,10 @@
-# Messages
+# Supported Messages
 
-This is about the messages type received from the RabbitMQ channel
+This is about the messages type received from the Message Queue system
 
 ## Type: SQL
+
+Example
 
 ```json
 {

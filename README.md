@@ -1,6 +1,6 @@
 # mq-to-db
 
-This is a [Golang (go)](https://golang.org/) program to read from a Message Queue System and Store into Database using concurrency as you can see into the image below
+This is a [Golang (go)](https://golang.org/) program to read [a specific JSON Payload message](docs/messages.md) from a Message Queue System and Store into Database using concurrency as you can see into the image below
 
 ![mq-to-db](images/nxconsumers-mxworkers.jpg)
 
@@ -85,10 +85,10 @@ make
 
 The application expose different endpoints via http server
 
-* http://localhost:8080/
-* http://localhost:8080/metrics
-* http://localhost:8080/health
-* http://localhost:8080/debug/pprof
+* [http://localhost:8080/](http://localhost:8080/)
+* [http://localhost:8080/metrics](http://localhost:8080/metrics)
+* [http://localhost:8080/health](http://localhost:8080/health)
+* [http://localhost:8080/debug/pprof](http://localhost:8080/debug/pprof)
 
 ## docker-compose
 
