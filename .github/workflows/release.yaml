@@ -6,8 +6,9 @@ on:
       - v[012].[0-9]+.[0-9]+ # https://help.github.com/es/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 
 env:
-  DOCKER_HUB_REPO: "docker.io/christiangda"
   DOCKER_BUILD_ARCHS: "amd64"
+  DOCKER_HUB_REPO: "docker.io/christiangda"
+  GH_PACKAGE_REPO: "docker.pkg.github.com/christiangda"
   GO_VERSION: 1.15
 
 jobs:
@@ -115,6 +116,12 @@ jobs:
 
       # - name: Publish Manifest in Docker Hub
       #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+
+      - name: Logging in GitHub Packages
+        run: cat ~/GH_TOKEN.txt | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+         
+      - name: Publish Images in GitHub Packages
+        run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
 
   create_release:
     name: Create Release
