@@ -3,9 +3,9 @@
 ![Release workflow](https://github.com/christiangda/mq-to-db/workflows/Release%20workflow/badge.svg)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/christiangda/mq-to-db?style=plastic)
 [![Go Report Card](https://goreportcard.com/badge/github.com/christiangda/mq-to-db)](https://goreportcard.com/report/github.com/christiangda/mq-to-db)
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/christiangda/mq-to-db?style=plastic)
-![Docker Pulls](https://img.shields.io/docker/pulls/christiangda/mq-to-db?style=plastic)
-![Docker Image Version (latest semver)](https://img.shields.io/docker/v/christiangda/mq-to-db?style=plastic)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/christiangda/mq-to-db?label=github%20release&style=plastic)
+![Docker Pulls](https://img.shields.io/docker/pulls/christiangda/mq-to-db?label=docker%20hub%20pulls&style=plastic)
+![Docker Image Version (latest semver)](https://img.shields.io/docker/v/christiangda/mq-to-db?label=docker%20hub%20tag&style=plastic)
 
 This is a [Golang (go)](https://golang.org/) program to read [a specific JSON Payload message](docs/messages.md) from a Message Queue System and Store into Database using concurrency
 
@@ -31,7 +31,7 @@ This is a close image of how it works:
 * Dockerfile multi-stage build
 * Makefile to facilitate the project builds
 * [docker-compose file](https://github.com/christiangda/mq-to-db/blob/master/docker-compose.yaml) and [configuration](https://github.com/christiangda/mq-to-db/tree/master/docker-compose) to testing all elements
-* docker images at [docker-hub](https://hub.docker.com/repository/docker/christiangda/mq-to-db)
+* docker images at [docker-hub](https://hub.docker.com/repository/docker/christiangda/mq-to-db) and [Github Packages](https://github.com/christiangda/mq-to-db/packages)
 * [CI/CD Github Action pipeline](https://github.com/christiangda/mq-to-db/actions) workflow
 
 ## How to execute
