@@ -118,7 +118,7 @@ jobs:
       #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Logging in GitHub Packages
-        run: cat ~/GH_TOKEN.txt | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+        run: echo ${{ secrets.GH_PASSWORD }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
          
       - name: Publish Images in GitHub Packages
         run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
