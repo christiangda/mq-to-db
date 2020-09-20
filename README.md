@@ -124,6 +124,25 @@ __NOTES:__
 
 * Remember to start dependencies first
 
+### Using docker image
+
+Here I use `master tag`, but you can see all [releases here](https://hub.docker.com/repository/docker/christiangda/mq-to-db/tags?page=1)
+
+```bash
+# pull the image first
+docker pull christiangda/mq-to-db:master
+
+# see available option
+docker run --rm  --name mq-to-db christiangda/mq-to-db:master - --help
+
+# run with a config file mapped and with profile option
+docker run --rm -v <path to config file>:/etc/mq-to-db/config.yaml --name mq-to-db christiangda/mq-to-db:master - --profile
+```
+
+__NOTES:__
+
+* Remember to start dependencies first
+
 ### Available endpoints
 
 The application expose different endpoints via http server
