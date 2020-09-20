@@ -421,7 +421,7 @@ func main() {
 			}).Errorf("Error starting http server %s", err)
 
 		}
-		osSignal <- true
+		osSignal <- true // make a gratefull shutdown
 	}()
 
 	// Block the main function here until we receive OS signals
