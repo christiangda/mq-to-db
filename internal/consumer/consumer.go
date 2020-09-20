@@ -38,8 +38,21 @@ type Config struct {
 }
 
 // GetURI return the consumer URI
-func (cc *Config) GetURI() string {
-	return fmt.Sprintf("amqp://%s:%s@%s:%d/", cc.Username, cc.Password, cc.Address, cc.Port)
+func (cc *Config) GetURI() (string, error) {
+
+	if cc.Address == "" || cc.Port == 0 {
+		return "", errors.New("Username or Port empty")
+	}
+
+	if cc.Username == "" {
+		return fmt.Sprintf("amqp://%s:%d/", cc.Address, cc.Port), nil
+	}
+
+	if cc.Password == "" {
+		return fmt.Sprintf("amqp://%s:@%s:%d/", cc.Username, cc.Address, cc.Port), nil
+	}
+
+	return fmt.Sprintf("amqp://%s:%v@%s:%d/", cc.Username, cc.Password, cc.Address, cc.Port), nil
 }
 
 // Consumer interface to be implemented for any kind of queue consumer

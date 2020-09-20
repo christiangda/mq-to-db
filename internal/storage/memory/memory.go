@@ -7,35 +7,36 @@ import (
 	"github.com/christiangda/mq-to-db/internal/storage"
 )
 
-type memoryConf struct {
+// MEM is an implementation of storage.store interface
+type MEM struct {
 }
 
 // New ...
-func New(c *storage.Config) (storage.Store, error) {
-	return &memoryConf{}, nil
+func New(c *storage.Config) (*MEM, error) {
+	return &MEM{}, nil
 }
 
 // Connect ...
-func (c *memoryConf) Connect(ctx context.Context) error {
+func (c *MEM) Connect(ctx context.Context) error {
 	return nil
 }
 
 // Ping ...
-func (c *memoryConf) Ping(ctx context.Context) error {
+func (c *MEM) Ping(ctx context.Context) error {
 	return nil
 }
 
 // ExecContext ...
-func (c *memoryConf) ExecContext(ctx context.Context, q string) (sql.Result, error) {
+func (c *MEM) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 	return nil, nil
 }
 
 // Close ...
-func (c *memoryConf) Close() error {
+func (c *MEM) Close() error {
 	return nil
 }
 
 // Stats ...
-func (c *memoryConf) Stats() sql.DBStats {
+func (c *MEM) Stats() sql.DBStats {
 	return sql.DBStats{}
 }

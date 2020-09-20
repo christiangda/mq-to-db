@@ -4,21 +4,21 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 )
 
-// Consumer implement Consumer.Consumer interface
-type Consumer struct{}
+// Kafka implement Consumer.Consumer interface
+type Kafka struct{}
 
 // New return a new instance of consumer.Consumer
-func New(c *consumer.Config) (consumer.Consumer, error) {
-	return &Consumer{}, nil
+func New(c *consumer.Config) (*Kafka, error) {
+	return &Kafka{}, nil
 }
 
 // Connect ...
-func (c *Consumer) Connect() error {
+func (c *Kafka) Connect() error {
 	return nil
 }
 
 // Consume ...
-func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
+func (c *Kafka) Consume(id string) (<-chan consumer.Messages, error) {
 	//cm := "this is a channel"
 	m := make(<-chan consumer.Messages)
 	return m, nil
@@ -26,7 +26,7 @@ func (c *Consumer) Consume(id string) (<-chan consumer.Messages, error) {
 }
 
 // Close ...
-func (c *Consumer) Close() error { return nil }
+func (c *Kafka) Close() error { return nil }
 
 // Acknowledger implements the Acknowledger for AMQP.
 type Acknowledger struct {
