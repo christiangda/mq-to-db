@@ -1,9 +1,14 @@
 # Releases
 
-## Release v0.0.3
+## Release v0.0.4
 
 * Added some basic tests
 * Refactored consumer/storage implementations to return `Structs` instead of `interfaces`
+
+## Release v0.0.3
+
+* Added some basic tests
+* Improved consumer performance
 
 ## Release v0.0.2
 
