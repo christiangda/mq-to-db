@@ -418,8 +418,10 @@ func main() {
 			log.WithFields(logrus.Fields{
 				"server": conf.Server.Address,
 				"port":   conf.Server.Port,
-			}).Fatalf("Error starting http server %s", err)
+			}).Errorf("Error starting http server %s", err)
+
 		}
+		osSignal <- true
 	}()
 
 	// Block the main function here until we receive OS signals
