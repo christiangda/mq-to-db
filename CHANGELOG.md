@@ -1,5 +1,10 @@
 # Releases
 
+## Release v0.0.5
+
+* No source code changes!, only github actions and docs
+* Added `Github Package` registry for docker images
+
 ## Release v0.0.4
 
 * Added some basic tests
