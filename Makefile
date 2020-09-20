@@ -13,6 +13,7 @@ GO_TEST          ?= $(GO) test
 GO_CLEAN         ?= $(GO) clean
 GO_CLEAN_OPTS    ?= -n -x -i
 GO_FMT           ?= $(GO)fmt
+GO_FMT_OPTS      ?=
 GO_MOD           ?= $(GO) mod
 GO_OPTS          ?= -v
 GO_HOST_OS       ?= $(shell $(GO) env GOHOSTOS)
@@ -51,13 +52,13 @@ go-lint:
 .PHONY: go-fmt
 go-fmt:
 	@echo "--> Checking formating"
-	$(GO_FMT) $(GO_OPTS) -d $$(find . -path $(GO_VENDOR_FOLDER) -prune -o -name '*.go' -print)
+	$(GO_FMT) $(GO_FMT_OPTS) -d $$(find . -path $(GO_VENDOR_FOLDER) -prune -o -name '*.go' -print);
 
 .PHONY: go-build
 go-build:
 	@echo "--> Building"
 	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) \
-	$(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
+	$(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print); 
 
 .PHONY: go-update-deps
 go-update-deps:
