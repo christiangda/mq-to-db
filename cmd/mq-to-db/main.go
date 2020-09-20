@@ -418,7 +418,7 @@ func main() {
 			log.WithFields(logrus.Fields{
 				"server": conf.Server.Address,
 				"port":   conf.Server.Port,
-			}).Fatal("Starting http server")
+			}).Fatalf("Error starting http server %s", err)
 		}
 	}()
 
