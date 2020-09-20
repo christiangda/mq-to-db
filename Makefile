@@ -52,13 +52,12 @@ go-lint:
 .PHONY: go-fmt
 go-fmt:
 	@echo "--> Checking formating"
-	$(GO_FMT) $(GO_FMT_OPTS) -d $$(find . -path $(GO_VENDOR_FOLDER) -prune -o -name '*.go' -print);
+	$(GO_FMT) $(GO_FMT_OPTS) -d $$(find . -path $(GO_VENDOR_FOLDER) -prune -o -name '*.go' -print)
 
 .PHONY: go-build
 go-build:
 	@echo "--> Building"
-	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) \
-	$(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print); 
+	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
 
 .PHONY: go-update-deps
 go-update-deps:
@@ -109,5 +108,5 @@ container-tag-latest:
 
 .PHONY: container-manifest
 container-manifest:
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create -a "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)"
