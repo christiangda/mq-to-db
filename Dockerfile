@@ -3,16 +3,16 @@ ARG ARCH="amd64"
 ARG APP_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
-ARG GO_VERSION="1.15"
+ARG GO_VERSION="1.16"
 FROM golang:${GO_VERSION} AS build-container
 RUN apt install -y git gcc make
 ADD . /src
-RUN cd /src && make
+RUN cd /src && CGO_ENABLED=0 make clean go-lint go-tidy go-test go-build
 
 FROM ${ARCH}/busybox:glibc
 
-LABEL maintainer="Mantainer User <mantainer.user@mail.com>" \
-      org.opencontainers.image.authors="Mantainer User <mantainer.user@mail.com>" \
+LABEL maintainer="Christian González Di Antonio <christiangda@mail.com>" \
+      org.opencontainers.image.authors="Christian González Di Antonio <christiangda@mail.com>" \
       org.opencontainers.image.url="https://github.com/christiangda/${APP_NAME}" \
       org.opencontainers.image.documentation="https://github.com/christiangda/${APP_NAME}" \
       org.opencontainers.image.source="https://github.com/christiangda/${APP_NAME}"
