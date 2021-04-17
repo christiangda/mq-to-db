@@ -1,4 +1,9 @@
-# #
+# Check for required command tools to build or stop immediately
+EXECUTABLES = go find
+K := $(foreach exec,$(EXECUTABLES),\
+  $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
+
+#
 APP_NAME 	 ?= mq-to-db
 GIT_VERSION  ?= $(shell git rev-parse --abbrev-ref HEAD)
 GIT_REVISION ?= $(shell git rev-parse HEAD | tr -d '\040\011\012\015\n')
@@ -9,6 +14,7 @@ BUILD_DATE   ?= $(shell date +'%Y-%m-%dT%H:%M:%S')
 # Golang
 GO               ?= go
 GO_BUILD         ?= $(GO) build
+GO_INSTALL         ?= $(GO) install
 GO_TEST          ?= $(GO) test
 GO_CLEAN         ?= $(GO) clean
 GO_CLEAN_OPTS    ?= -n -x -i
@@ -18,8 +24,8 @@ GO_MOD           ?= $(GO) mod
 GO_OPTS          ?= -v
 GO_HOST_OS       ?= $(shell $(GO) env GOHOSTOS)
 GO_HOST_ARCH     ?= $(shell $(GO) env GOHOSTARCH)
-GO_OS            ?= linux
-GO_ARCH          ?= amd64
+GO_OS            ?= darwin linux windows
+GO_ARCH          ?= arm arm64 amd64 386
 GO_VENDOR_FOLDER ?= ./vendor
 GO_PKGS_PATH     ?= ./...
 GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(GIT_VERSION) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(GIT_REVISION) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(GIT_BRANCH) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(GIT_USER)\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(BUILD_DATE)"
@@ -56,8 +62,19 @@ go-fmt:
 
 .PHONY: go-build
 go-build:
-	@echo "--> Building"
-	GOOS=$(GO_OS) GOARCH=$(GO_ARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
+	@echo "--> Building native OS app"
+	GOOS=$(GO_HOST_OS) GOARCH=$(GO_HOST_ARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
+
+.PHONY: go-install
+go-install:
+	@echo "--> Installing"
+	GOOS=$(GO_HOST_OS) GOARCH=$(GO_HOST_ARCH) $(GO_INSTALL) $(GO_LDFLAGS)
+
+.PHONY: go-build-all
+go-build-all: go-build
+	@echo "--> Building for all OS and ARCH"
+	$(foreach GOOS, $(GO_OS),\
+	$(foreach GOARCH, $(GO_ARCH), $(shell GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME)-$(GOOS)-$(GOARCH) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print) )))
 
 .PHONY: go-update-deps
 go-update-deps:
@@ -84,7 +101,7 @@ go-test:
 clean:
 	@echo "--> Cleaning"
 	$(GO_CLEAN) $(GO_CLEAN_OPTS)
-	rm -rf $(APP_NAME)
+	rm -rf $(APP_NAME)*
 
 .PHONY: container-build
 container-build:
