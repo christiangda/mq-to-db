@@ -49,7 +49,7 @@ endif
 
 #
 .PHONY: all
-all: clean go-lint go-tidy go-test go-build
+all: clean go-lint go-tidy go-test go-build-all
 
 .PHONY: go-lint
 go-lint:
