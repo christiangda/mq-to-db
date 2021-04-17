@@ -94,6 +94,7 @@ services:
       context: ./
       args:
         METRICS_PORT: 8080
+        GO_VERSION: 1.16
     volumes:
       - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml:Z
     environment:
@@ -123,6 +124,7 @@ services:
       context: ./
       args:
         METRICS_PORT: 8081
+        GO_VERSION: 1.16
     volumes:
       - ./docker-compose/mq-to-db/config.yaml:/home/nobody/config.yaml
     environment:
