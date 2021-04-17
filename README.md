@@ -128,7 +128,7 @@ __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang
 
 ### Using binary
 
-Linux only
+Cross-compiling
 
 ```bash
 # make executable first
@@ -192,7 +192,7 @@ make
 
 __NOTES__ related to make
 
-* 1. This create a linux binary (64bits) and also Docker Image (linux 64 bit)
+* 1. This create a cross-compiling binaries and also Docker Image (linux 64bits)
 * 2. Check the [Makefile](Makefile) to see the `The make available targets options`
 
 ## References
@@ -205,7 +205,7 @@ Internals
 Externals
 
 * [references](docs/references.md)
-  
+
 ## License
 
 This module is released under the GNU General Public License Version 3:
