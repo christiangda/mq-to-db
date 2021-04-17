@@ -5,13 +5,13 @@ on:
     branches:
       - master
     paths-ignore:
-      - '**.md'
+      - "**.md"
 
   pull_request:
     branches:
       - master
     paths-ignore:
-      - '**.md'
+      - "**.md"
 
 env:
   DOCKER_BUILD_ARCHS: "amd64"
@@ -20,7 +20,6 @@ env:
   GO_VERSION: 1.15
 
 jobs:
-
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -28,7 +27,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.15
+          go-version: ^1.16
         id: go
 
       - name: Check out code into the Go module directory
@@ -40,10 +39,10 @@ jobs:
       # - name: Check code modifications
       #   run: git diff --exit-code
 
-#      - name: Coveralls
-#        uses: coverallsapp/github-action@master
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
+  #      - name: Coveralls
+  #        uses: coverallsapp/github-action@master
+  #        with:
+  #          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     name: Build
@@ -67,7 +66,6 @@ jobs:
 
       # - name: List .build Files
       #   run: ls -la .build
-
       # - name: Upload .build artifacts
       #   uses: actions/upload-artifact@v1
       #   with:
@@ -129,6 +127,6 @@ jobs:
 
       - name: Logging in GitHub Packages
         run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
-         
+
       - name: Publish Images in GitHub Packages
         run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
