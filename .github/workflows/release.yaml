@@ -10,7 +10,6 @@ env:
   DOCKER_HUB_REPO: "docker.io/christiangda"
   GH_PACKAGE_REPO: "docker.pkg.github.com/christiangda/mq-to-db"
   GO_VERSION: 1.15
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 jobs:
   test:
@@ -28,9 +27,6 @@ jobs:
 
       - name: Test Linux Platform Only
         run: make go-test
-
-      # - name: Check code modifications
-      #   run: git diff --exit-code
 
   build:
     name: Build
@@ -96,16 +92,17 @@ jobs:
       #   run: ls -la .build
 
       - name: Set Env Var RELEASE_VERSION
-        run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF#refs/*/}
+        run: |
+          echo "RELEASE_VERSION::${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Show RELEASE_VERSION
-        run: echo $RELEASE_VERSION
+        run: echo ${{ env.RELEASE_VERSION }}
 
       - name: Build Docker Images for docker hub
-        run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Docker Tag Images Latest
-        run: make container-tag-latest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-tag-latest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Show Local Docker Images
         run: docker images
@@ -114,22 +111,22 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
 
       - name: Publish Images in Docker Hub
-        run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       # - name: Publish Manifest in Docker Hub
-      #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+      #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Build Docker Images for Github Packages
-        run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Docker Tag Images Latest
-        run: make container-tag-latest CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-tag-latest CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
       - name: Logging in GitHub Packages
         run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
 
       - name: Publish Images in GitHub Packages
-        run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=$RELEASE_VERSION ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
 
   create_github_release:
     name: Create Github Release
