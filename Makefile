@@ -48,7 +48,7 @@ CONTAINER_IMAGE_TAG ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 ifneq (,$(wildcard /.dockerenv))
 	ifeq ($(GO_HOST_ARCH),amd64)
 			ifeq ($(GO_HOST_OS),$(filter $(GO_HOST_OS),linux))
-					GO_OPTS := $(GO_OPTS) -race CGO_ENABLE=1
+					GO_OPTS := $(GO_OPTS) -race
 			endif
 	endif
 endif
@@ -60,7 +60,10 @@ endif
 
 #
 .PHONY: all
-all: clean go-lint go-tidy go-test go-build-all
+all: clean go-lint go-tidy go-test go-build
+
+.PHONY: full
+full: clean go-lint go-tidy go-test go-build-all
 
 .PHONY: go-lint
 go-lint:
@@ -106,7 +109,7 @@ endif
 .PHONY: go-test
 go-test:
 	@echo "--> Test"
-	$(GO_TEST) $(GO_OPTS) $(GO_PKGS_PATH)
+	GOOS=$(GO_HOST_OS) GOARCH=$(GO_HOST_ARCH) CGO_ENABLED=$(GO_CGO_ENABLED) $(GO_TEST) $(GO_OPTS) $(GO_PKGS_PATH)
 
 .PHONY: clean
 clean:
