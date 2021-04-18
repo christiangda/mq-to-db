@@ -49,6 +49,7 @@ ifneq (,$(wildcard /.dockerenv))
 	ifeq ($(GO_HOST_ARCH),amd64)
 			ifeq ($(GO_HOST_OS),$(filter $(GO_HOST_OS),linux))
 					GO_OPTS := $(GO_OPTS) -race
+					GO_CGO_ENABLED := 1
 			endif
 	endif
 endif
