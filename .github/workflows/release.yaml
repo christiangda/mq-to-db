@@ -10,6 +10,7 @@ env:
   DOCKER_HUB_REPO: "docker.io/christiangda"
   GH_PACKAGE_REPO: "docker.pkg.github.com/christiangda/mq-to-db"
   GO_VERSION: 1.15
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
 jobs:
   test:
