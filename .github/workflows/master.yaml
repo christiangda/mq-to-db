@@ -58,8 +58,11 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - name: Build Cross-Platform
-        run: make full
+      - name: Build
+        run: make
+
+      # - name: Build Cross-Platform
+      #   run: make full
 
       - name: List Workspace Files
         run: ls -la .

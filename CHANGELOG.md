@@ -1,5 +1,14 @@
 # Releases
 
+## Release v0.0.6
+
+* Bump Golang version 1.16
+* Improved Makefile
+* Improved Dockerfile
+* Improved docker-compose.yaml
+* Updated docker images version
+* Improved README.md
+
 ## Release v0.0.5
 
 * No source code changes!, only github actions and docs
