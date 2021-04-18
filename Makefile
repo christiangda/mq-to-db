@@ -1,5 +1,5 @@
 # Check for required command tools to build or stop immediately
-EXECUTABLES = go find
+EXECUTABLES = go find which
 K := $(foreach exec,$(EXECUTABLES),\
   $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
@@ -12,9 +12,10 @@ GIT_USER     ?= $(shell git config --get user.name | tr -d '\040\011\012\015\n')
 BUILD_DATE   ?= $(shell date +'%Y-%m-%dT%H:%M:%S')
 
 # Golang
+GO_VERSION       ?= 1.16
 GO               ?= go
 GO_BUILD         ?= $(GO) build
-GO_INSTALL         ?= $(GO) install
+GO_INSTALL       ?= $(GO) install
 GO_TEST          ?= $(GO) test
 GO_CLEAN         ?= $(GO) clean
 GO_CLEAN_OPTS    ?= -n -x -i
@@ -29,6 +30,7 @@ GO_ARCH          ?= arm arm64 amd64 386
 GO_VENDOR_FOLDER ?= ./vendor
 GO_PKGS_PATH     ?= ./...
 GO_LDFLAGS       ?= -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(GIT_VERSION) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(GIT_REVISION) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(GIT_BRANCH) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(GIT_USER)\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(BUILD_DATE)"
+GO_CGO_ENABLED    ?= 0
 
 # Container
 CONTAINER_BUILD_COMMAND ?= docker build
@@ -37,14 +39,23 @@ CONTAINER_TAG_COMMAND ?= docker tag
 CONTAINER_BUILD_FILE ?= ./Dockerfile
 CONTAINER_BUILD_CONTEXT ?= ./
 CONTAINER_IMAGE_ARCH ?= amd64
+CONTAINER_IMAGE_OS ?= linux
 CONTAINER_IMAGE_NAME ?= $(APP_NAME)
 CONTAINER_IMAGE_REPO ?= christiangda
 CONTAINER_IMAGE_TAG ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
-ifeq ($(GO_HOST_ARCH),amd64)
-    ifeq ($(GO_HOST_OS),$(filter $(GO_HOST_OS),linux))
-        GO_OPTS := $(GO_OPTS) -race
-    endif
+# Enable -race only on linux and no container
+ifneq (,$(wildcard /.dockerenv))
+	ifeq ($(GO_HOST_ARCH),amd64)
+			ifeq ($(GO_HOST_OS),$(filter $(GO_HOST_OS),linux))
+					GO_OPTS := $(GO_OPTS) -race CGO_ENABLE=1
+			endif
+	endif
+endif
+
+# compile all when cgo is disabled (slow)
+ifeq ($(GO_CGO_ENABLED),0)
+	GO_OPTS := $(GO_OPTS) -a
 endif
 
 #
@@ -63,7 +74,7 @@ go-fmt:
 .PHONY: go-build
 go-build:
 	@echo "--> Building native OS app"
-	GOOS=$(GO_HOST_OS) GOARCH=$(GO_HOST_ARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
+	GOOS=$(GO_HOST_OS) GOARCH=$(GO_HOST_ARCH) CGO_ENABLED=$(GO_CGO_ENABLED) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print)
 
 .PHONY: go-install
 go-install:
@@ -74,7 +85,7 @@ go-install:
 go-build-all: go-build
 	@echo "--> Building for all OS and ARCH"
 	$(foreach GOOS, $(GO_OS),\
-	$(foreach GOARCH, $(GO_ARCH), $(shell GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME)-$(GOOS)-$(GOARCH) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print) )))
+	$(foreach GOARCH, $(GO_ARCH), $(shell GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(GO_CGO_ENABLED) $(GO_BUILD) $(GO_OPTS) -o $(APP_NAME)-$(GOOS)-$(GOARCH) $(GO_LDFLAGS) $$(find ./cmd -name '*.go' -print) )))
 
 .PHONY: go-update-deps
 go-update-deps:
@@ -107,8 +118,10 @@ clean:
 container-build:
 	@echo "--> Building container image"
 	$(CONTAINER_BUILD_COMMAND) \
-		--build-arg ARCH="$(CONTAINER_IMAGE_ARCH)" \
+		--build-arg CONTAINER_ARCH="$(CONTAINER_IMAGE_ARCH)" \
+		--build-arg CONTAINER_OS="$(CONTAINER_IMAGE_OS)" \
 		--build-arg APP_NAME="$(CONTAINER_IMAGE_NAME)" \
+		--build-arg GO_VERSION="$(GO_VERSION)" \
 		--tag "$(CONTAINER_IMAGE_REPO)/$(CONTAINER_IMAGE_NAME):$(CONTAINER_IMAGE_TAG)" \
 		--file $(CONTAINER_BUILD_FILE) \
 		$(CONTAINER_BUILD_CONTEXT)

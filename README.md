@@ -56,7 +56,7 @@ docker-compose down -v
 
 #### Available links
 
-After docker-compose start all the services, you have the following links ready to be curious, I prepared a simple `grafana dashboard` tok show you part of the `prometheus metrics` implemented
+After docker-compose start all the services, you have the following links ready to be curious, I prepared a simple `grafana dashboard` to show you part of the `prometheus metrics` implemented
 
 * [mq-to-db-01 home page](http://localhost:8080/)
 * [mq-to-db-02 home page](http://localhost:8081/)

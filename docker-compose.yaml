@@ -15,7 +15,7 @@ services:
   postgresql:
     container_name: postgresql
     privileged: true
-    image: postgres
+    image: postgres:13
     network_mode: bridge
     # networks:
     #   - development
@@ -42,7 +42,7 @@ services:
   # Monitoring
   prometheus:
     container_name: prometheus
-    image: prom/prometheus:v2.20.1
+    image: prom/prometheus:v2.26.0
     privileged: true
     network_mode: bridge
     # networks:
@@ -62,7 +62,7 @@ services:
 
   grafana:
     container_name: grafana
-    image: grafana/grafana:7.1.5
+    image: grafana/grafana:7.5.4
     privileged: true
     network_mode: bridge
     # networks:

@@ -1,5 +1,6 @@
 # build stage
-ARG ARCH="amd64"
+ARG CONTAINER_ARCH="amd64"
+ARG CONTAINER_OS="linux"
 ARG APP_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
@@ -7,9 +8,10 @@ ARG GO_VERSION="1.16"
 FROM golang:${GO_VERSION} AS build-container
 RUN apt install -y git gcc make
 ADD . /src
-RUN cd /src && CGO_ENABLED=0 make clean go-lint go-tidy go-test go-build
+RUN cd /src && GOOS=${CONTAINER_OS} GOARCH=${CONTAINER_ARCH} make clean go-test go-build
 
-FROM ${ARCH}/busybox:glibc
+# App container
+FROM ${CONTAINER_ARCH}/busybox:glibc
 
 LABEL maintainer="Christian González Di Antonio <christiangda@mail.com>" \
       org.opencontainers.image.authors="Christian González Di Antonio <christiangda@mail.com>" \
