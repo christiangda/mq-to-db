@@ -20,13 +20,15 @@ type Config struct {
 	Password           string
 	VirtualHost        string
 	Queue              struct {
-		Name       string
-		RoutingKey string
-		Durable    bool
-		AutoDelete bool
-		Exclusive  bool
-		AutoACK    bool
-		Args       map[string]interface{}
+		Name          string
+		RoutingKey    string
+		Durable       bool
+		AutoDelete    bool
+		Exclusive     bool
+		AutoACK       bool
+		PrefetchCount int
+		PrefetchSize  int
+		Args          map[string]interface{}
 	}
 	Exchange struct {
 		Name       string
