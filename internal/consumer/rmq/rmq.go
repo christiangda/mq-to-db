@@ -20,13 +20,15 @@ type RMQ struct {
 	requestedHeartbeat time.Duration
 	virtualHost        string
 	queue              struct {
-		name       string
-		routingKey string
-		durable    bool
-		autoDelete bool
-		exclusive  bool
-		autoACK    bool
-		args       map[string]interface{}
+		name          string
+		routingKey    string
+		durable       bool
+		autoDelete    bool
+		exclusive     bool
+		autoACK       bool
+		PrefetchCount int
+		PrefetchSize  int
+		args          map[string]interface{}
 	}
 	exchange struct {
 		name       string
@@ -51,13 +53,15 @@ func New(c *consumer.Config) (*RMQ, error) {
 		requestedHeartbeat: c.RequestedHeartbeat,
 		virtualHost:        c.VirtualHost,
 		queue: struct {
-			name       string
-			routingKey string
-			durable    bool
-			autoDelete bool
-			exclusive  bool
-			autoACK    bool
-			args       map[string]interface{}
+			name          string
+			routingKey    string
+			durable       bool
+			autoDelete    bool
+			exclusive     bool
+			autoACK       bool
+			PrefetchCount int
+			PrefetchSize  int
+			args          map[string]interface{}
 		}{
 			c.Queue.Name,
 			c.Queue.RoutingKey,
@@ -65,6 +69,8 @@ func New(c *consumer.Config) (*RMQ, error) {
 			c.Queue.AutoDelete,
 			c.Queue.Exclusive,
 			c.Queue.AutoACK,
+			c.Queue.PrefetchCount,
+			c.Queue.PrefetchSize,
 			c.Queue.Args,
 		},
 		exchange: struct {
@@ -109,6 +115,16 @@ func (c *RMQ) Connect() error {
 	}
 	//defer ch.Close()
 	c.channel = ch
+
+	err = ch.Qos(
+		c.queue.PrefetchCount,
+		c.queue.PrefetchSize,
+		false, // global
+	)
+
+	if err != nil {
+		return err
+	}
 
 	err = c.channel.ExchangeDeclare(
 		c.exchange.name,

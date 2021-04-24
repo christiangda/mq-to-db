@@ -258,13 +258,15 @@ func main() {
 			Password:           conf.Consumer.Password,
 			VirtualHost:        conf.Consumer.VirtualHost,
 			Queue: struct {
-				Name       string
-				RoutingKey string
-				Durable    bool
-				AutoDelete bool
-				Exclusive  bool
-				AutoACK    bool
-				Args       map[string]interface{}
+				Name          string
+				RoutingKey    string
+				Durable       bool
+				AutoDelete    bool
+				Exclusive     bool
+				AutoACK       bool
+				PrefetchCount int
+				PrefetchSize  int
+				Args          map[string]interface{}
 			}{
 				conf.Consumer.Queue.Name,
 				conf.Consumer.Queue.RoutingKey,
@@ -272,6 +274,8 @@ func main() {
 				conf.Consumer.Queue.AutoDelete,
 				conf.Consumer.Queue.Exclusive,
 				conf.Consumer.Queue.AutoACK,
+				conf.Consumer.Queue.PrefetchCount,
+				conf.Consumer.Queue.PrefetchSize,
 				conf.Consumer.Queue.Args,
 			},
 			Exchange: struct {

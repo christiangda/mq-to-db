@@ -17,3 +17,6 @@ vendor/
 mq-to-db
 main
 mq-to-db*
+
+/.history
+/.github

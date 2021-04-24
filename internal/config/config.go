@@ -48,13 +48,15 @@ type Config struct {
 		Password           string        `json:"password" yaml:"password"`
 		VirtualHost        string        `json:"virtualHost" yaml:"virtualHost"`
 		Queue              struct {
-			Name       string `json:"name" yaml:"name"`
-			RoutingKey string `json:"routingKey" yaml:"routingKey"`
-			Durable    bool   `json:"durable" yaml:"durable"`
-			AutoDelete bool   `json:"autoDelete" yaml:"autoDelete"`
-			Exclusive  bool   `json:"exclusive" yaml:"exclusive"`
-			AutoACK    bool   `json:"autoACK" yaml:"autoACK"`
-			Args       args   `json:"args" yaml:"args"`
+			Name          string `json:"name" yaml:"name"`
+			RoutingKey    string `json:"routingKey" yaml:"routingKey"`
+			Durable       bool   `json:"durable" yaml:"durable"`
+			AutoDelete    bool   `json:"autoDelete" yaml:"autoDelete"`
+			Exclusive     bool   `json:"exclusive" yaml:"exclusive"`
+			AutoACK       bool   `json:"autoACK" yaml:"autoACK"`
+			PrefetchCount int    `json:"PrefetchCount" yaml:"PrefetchCount"`
+			PrefetchSize  int    `json:"PrefetchSize" yaml:"PrefetchSize"`
+			Args          args   `json:"args" yaml:"args"`
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {
 			Name       string `json:"name" yaml:"name"`

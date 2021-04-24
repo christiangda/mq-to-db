@@ -40,9 +40,11 @@ consumer:
     name: my.queue
     routingKey: my.routeKey
     durable: true
-    autoDelete: true
+    autoDelete: false
     exclusive: false
     autoACK: false
+    PrefetchCount: 1500
+    PrefetchSize: 0    
     args:                    # Optional
       x-message-ttl: 180000
       x-dead-letter-exchange: retry.exchange
