@@ -1,5 +1,9 @@
 # Releases
 
+## Release v0.0.7
+
+* RabbitMQ consumer now support uses PrefetchCount and PrefetchSize
+
 ## Release v0.0.6
 
 * Bump Golang version 1.16
