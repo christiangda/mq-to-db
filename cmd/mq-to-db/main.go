@@ -82,9 +82,12 @@ func init() { // package initializer
 	flag.BoolVar(&conf.Server.KeepAlivesEnabled, "server.keepAlivesEnabled", true, "Server KeepAlivesEnabled")
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
 	flag.BoolVar(&conf.Server.Profile, "profile", false, "Enable program profile")
-	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json] ")
+	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json]")
+	flag.StringVar(&conf.Server.LogLevel, "logLevel", "info", "Log Level [debug|info|warning|panic|fatal]")
+
 	// Application conf flags
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
+
 	// Application version flags
 	showVersion := flag.Bool("version", false, "Show application version")
 	showVersionInfo := flag.Bool("versionInfo", false, "Show application version information")
@@ -118,10 +121,24 @@ func init() { // package initializer
 		log.SetFormatter(&logrus.TextFormatter{DisableColors: false, DisableTimestamp: false, FullTimestamp: true})
 	}
 
+	switch conf.Server.LogLevel {
+	case "debug":
+		log.SetLevel(logrus.DebugLevel)
+	case "info":
+		log.SetLevel(logrus.InfoLevel)
+	case "warning":
+		log.SetLevel(logrus.WarnLevel)
+	case "panic":
+		log.SetLevel(logrus.PanicLevel)
+	case "fatal":
+		log.SetLevel(logrus.FatalLevel)
+	default:
+		log.SetLevel(logrus.InfoLevel)
+	}
+
+	// if --debug, force debug log level no matter what value is in logLevel
 	if conf.Server.Debug {
 		log.SetLevel(logrus.DebugLevel)
-	} else {
-		log.SetLevel(logrus.InfoLevel)
 	}
 
 	log.Info("Application initialized")
@@ -652,7 +669,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	<ul>
 		<li><a href="{{.ProfileLink}}">{{.ProfileLink}}</a></li>
 	</ul>
-	
+
 
 	<h3><a href="https://prometheus.io/">If you want to know more about Metrics and Exporters go to https://prometheus.io</a></h3>
 </body>

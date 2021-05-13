@@ -8,7 +8,7 @@ The configuration file could be `named as you want`, by default if you don't spe
 This could be located in any place, but by default when service start this find the configuration file in the following location:
 
 1. `./config.yaml` Next to the service binary `mq-to-db`
-2. `/etc/mq-to-db/config.yaml` Into the standard `Linux` configuration filesystem
+2. `/etc/mq-to-db/config.yaml` Into the standard `Linux` configuration File System
 3. `$HOME/config.yaml`  Into the `user home` which is executing the service binary `mq-to-db`
 
 __NOTE:__ Remember that thanks to the parameter `--configFile` you can tell to the service which  configuration file you want to use, for example:
@@ -44,7 +44,7 @@ consumer:
     exclusive: false
     autoACK: false
     PrefetchCount: 1500
-    PrefetchSize: 0    
+    PrefetchSize: 0
     args:                    # Optional
       x-message-ttl: 180000
       x-dead-letter-exchange: retry.exchange

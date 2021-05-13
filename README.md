@@ -73,7 +73,6 @@ go tool pprof http://127.0.0.1:8080/debug/pprof/goroutine
 # terminal 2, for mq-to-db-02 inside the docker-compose-file
 go tool pprof http://127.0.0.1:8081/debug/pprof/goroutine
 
-
 # once you are into tool pprof, execute the command web
 (pprof) web
 ```

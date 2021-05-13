@@ -100,8 +100,10 @@ services:
     environment:
       SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
       SERVER_PORT: 8080
+      #LOGLEVEL: fatal # as a env var
     command:
       - --profile
+      - --logLevel=info # as a container arg
       #- --debug
     ports:
       - 8080:8080
@@ -130,8 +132,10 @@ services:
     environment:
       SERVER_ADDRESS: 0.0.0.0 # means all the ips into the container
       SERVER_PORT: 8081
+      #LOGLEVEL: fatal # as a env var
     command:
       - --profile
+      - --logLevel=info # as a container arg
       #- --debug
     ports:
       - 8081:8081

@@ -30,6 +30,7 @@ type Config struct {
 		ShutdownTimeout   time.Duration `json:"shutdownTimeout" yaml:"shutdownTimeout"`
 		KeepAlivesEnabled bool          `json:"keepAlivesEnabled" yaml:"keepAlivesEnabled"`
 		LogFormat         string        `json:"logFormat" yaml:"logFormat"`
+		LogLevel          string        `json:"logLevel" yaml:"logLevel"`
 		Debug             bool          `json:"debug" yaml:"debug"`
 		Profile           bool          `json:"profile" yaml:"profile"`
 	}
