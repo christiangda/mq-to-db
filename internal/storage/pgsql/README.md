@@ -1,6 +1,5 @@
 # pgsql
 
-
 ## References
 
 * [https://www.alexedwards.net/blog/how-to-manage-database-timeouts-and-cancellations-in-go](https://www.alexedwards.net/blog/how-to-manage-database-timeouts-and-cancellations-in-go)
