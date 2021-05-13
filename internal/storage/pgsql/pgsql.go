@@ -108,7 +108,7 @@ func (c *PGSQL) Close() error {
 	return c.pool.Close()
 }
 
-// Close closes the database and prevents new queries from starting.
+// Stats return the database metrics statistics
 func (c *PGSQL) Stats() sql.DBStats {
 	return c.pool.Stats()
 }

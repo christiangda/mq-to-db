@@ -1,5 +1,10 @@
 # Releases
 
+## Release v0.0.9
+
+* Implemented new config parameter --logLevel
+* Dependencies updated
+
 ## Release v0.0.8
 
 * Fixed golang version in github actions pipeline
