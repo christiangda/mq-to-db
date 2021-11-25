@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 // Results is a return value from processor
@@ -49,7 +49,6 @@ func New(ctx context.Context, st storage.Store, mtrs *metrics.Metrics) Storer {
 
 // Store ...
 func (s *storerConf) Store(m consumer.Messages) Results {
-
 	log.Debugf("Processing message: %s", m.Payload)
 
 	s.mtrs.StorerMessagesTotal.Inc()

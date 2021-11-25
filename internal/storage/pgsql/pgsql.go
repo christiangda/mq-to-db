@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
+	log "github.com/sirupsen/logrus"
 )
 
 // PGSQL is a implementation go storage.Store interface
@@ -25,7 +25,6 @@ type PGSQL struct {
 
 // New return
 func New(c *storage.Config, mtrs *metrics.Metrics) (*PGSQL, error) {
-
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Address,
 		c.Port,
@@ -39,7 +38,7 @@ func New(c *storage.Config, mtrs *metrics.Metrics) (*PGSQL, error) {
 	if err != nil {
 		return nil, err
 	}
-	//defer pool.Close()
+	// defer pool.Close()
 
 	pool.SetConnMaxLifetime(c.ConnMaxLifetime)
 	pool.SetMaxIdleConns(c.MaxIdleConns)
@@ -59,10 +58,9 @@ func New(c *storage.Config, mtrs *metrics.Metrics) (*PGSQL, error) {
 // Connect returns a single connection by either opening a new connection
 // or returning an existing connection from the connection pool.
 func (c *PGSQL) Connect(ctx context.Context) error {
-
 	conn, err := c.pool.Conn(ctx)
 	c.conn = conn
-	//defer conn.Close()
+	// defer conn.Close()
 
 	return err
 }
@@ -70,7 +68,6 @@ func (c *PGSQL) Connect(ctx context.Context) error {
 // Ping verifies a connection to the database is still alive,
 // establishing a connection if necessary.
 func (c *PGSQL) Ping(ctx context.Context) error {
-
 	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
 	defer cancel()
 
@@ -87,7 +84,6 @@ func (c *PGSQL) Ping(ctx context.Context) error {
 
 // ExecContext executes a query without returning any rows.
 func (c *PGSQL) ExecContext(ctx context.Context, q string) (sql.Result, error) {
-
 	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
 	defer cancel()
 
