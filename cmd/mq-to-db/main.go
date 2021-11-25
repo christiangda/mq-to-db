@@ -297,7 +297,7 @@ func main() {
 	}
 
 	// repository to called it every time we need to store a consumer.Message into the database
-	strer := repository.NewMessageRepository(appCtx, db, mtrs)
+	msgsRepo := repository.NewMessageRepository(appCtx, db, mtrs)
 
 	// Logic of channels for consumer and for storage
 	// it is a go pipeline model https://blog.golang.org/pipelines
@@ -329,7 +329,7 @@ func main() {
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, msgsRepo)
 	}
 
 	// Merge all channels from workers in only one channel of type <-chan repository.Results
