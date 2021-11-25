@@ -125,38 +125,49 @@ go run -race ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 
 __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang.org/race-detector) because we are using [Go Concurrency](https://blog.golang.org/pipelines)
 
-### Using binary
+### How to build
 
-Cross-compiling
+compiling for your ARCH and OS
 
 ```bash
 # make executable first
 make
 
 # check the available options
-./mq-to-db --help
+./build/mq-to-db --help
 
 # execute
-./mq-to-db --configFile config-sample.yaml
+./build/mq-to-db --configFile config-sample.yaml
 ```
 
-__NOTES:__
+Cross-compiling
 
-* Remember to start dependencies first
+```bash
+make build-dist
+
+# cross-compiling files
+ls -l ./dist/
+```
+
+__NOTES__ related to make
+
+* 1. This create a cross-compiling binaries and also Docker Image (linux 64bits)
+* 2. Check the [Makefile](Makefile) to see `The make available targets options`
+* 3. Remember to start dependencies first
 
 ### Using docker image
 
-Here I use `master tag`, but you can see all [releases here](https://hub.docker.com/repository/docker/christiangda/mq-to-db/tags?page=1)
+Here I use `latest tag`, but you can see all [releases here](https://hub.docker.com/repository/docker/christiangda/mq-to-db/tags?page=1)
 
 ```bash
 # pull the image first
-docker pull christiangda/mq-to-db:master
+docker pull christiangda/mq-to-db:latest
 
 # see available option
-docker run --rm --name mq-to-db christiangda/mq-to-db:master - --help
+docker run --rm --name mq-to-db christiangda/mq-to-db:latest - --help
 
 # run with a config file mapped and with profile option
-docker run --rm -v <path to config file>:/etc/mq-to-db/config.yaml --name mq-to-db christiangda/mq-to-db:master - --profile
+docker run --rm -v <path to config file>:/etc/mq-to-db/config.yaml --name mq-to-db christiangda/mq-to-db:latest - --profile
 ```
 
 __NOTES:__
@@ -171,28 +182,6 @@ The application expose different endpoints via http server
 * [http://localhost:8080/metrics](http://localhost:8080/metrics)
 * [http://localhost:8080/health](http://localhost:8080/health)
 * [http://localhost:8080/debug/pprof](http://localhost:8080/debug/pprof)
-
-## How to build
-
-Manually
-
-```bash
-go build \
-    -o mq-to-db \
-    -ldflags "-X github.com/christiangda/mq-to-db/internal/version.Version=$(git rev-parse --abbrev-ref HEAD) -X github.com/christiangda/mq-to-db/internal/version.Revision=$(git rev-parse HEAD) -X github.com/christiangda/mq-to-db/internal/version.Branch=$(git rev-parse --abbrev-ref HEAD) -X github.com/christiangda/mq-to-db/internal/version.BuildUser=\"$(git config --get user.name | tr -d '\040\011\012\015\n')\" -X github.com/christiangda/mq-to-db/internal/version.BuildDate=$(date +'%Y-%m-%dT%H:%M:%S')" \
-    ./cmd/mq-to-db/main.go
-```
-
-Automatic
-
-```bash
-make
-```
-
-__NOTES__ related to make
-
-* 1. This create a cross-compiling binaries and also Docker Image (linux 64bits)
-* 2. Check the [Makefile](Makefile) to see `The make available targets options`
 
 ## References
 
