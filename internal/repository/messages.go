@@ -8,7 +8,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/metrics"
-	"github.com/christiangda/mq-to-db/internal/storage"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -45,10 +44,10 @@ type MessageRepository struct {
 }
 
 // New return
-func NewMessageRepository(ctx context.Context, st storage.Store, mtrs *metrics.Metrics) *MessageRepository {
+func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Metrics) *MessageRepository {
 	return &MessageRepository{
 		ctx:  ctx,
-		sql:  st,
+		sql:  sql,
 		mtrs: mtrs,
 	}
 }
