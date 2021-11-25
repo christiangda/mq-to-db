@@ -41,7 +41,6 @@ type Config struct {
 	}
 
 	Consumer struct {
-		Kind               string        `json:"kind" yaml:"kind"`
 		Address            string        `json:"address" yaml:"address"`
 		Port               int           `json:"port" yaml:"port"`
 		RequestedHeartbeat time.Duration `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
@@ -69,7 +68,6 @@ type Config struct {
 	}
 
 	Database struct {
-		Kind     string `json:"kind" yaml:"kind"`
 		Address  string `json:"address" yaml:"address"`
 		Port     int    `json:"port" yaml:"port"`
 		Username string `json:"username" yaml:"username"`

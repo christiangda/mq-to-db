@@ -23,7 +23,6 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
-	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
 	"github.com/christiangda/mq-to-db/internal/storer"
 
@@ -209,94 +208,72 @@ func main() {
 	appCtx, cancel := context.WithCancel(appCtx)
 	mtrs = metrics.New(&conf)
 
-	// Create abstraction layers (Using interfaces)
-	var db storage.Store
-	var qc consumer.Consumer
-
-	var err error // Necessary to handle errors inside switch/case
 	// Select the storage
-	switch conf.Database.Kind {
-	case "memory":
-		db, err = memory.New(&storage.Config{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using  memory database")
-	case "postgresql":
-		db, err = pgsql.New(&storage.Config{
-			Address:  conf.Database.Address,
-			Port:     conf.Database.Port,
-			Username: conf.Database.Username,
-			Password: conf.Database.Password,
-			Database: conf.Database.Database,
-			SSLMode:  conf.Database.SSLMode,
+	log.Info("Using postgresql database")
+	db, err := pgsql.New(&storage.Config{
+		Address:  conf.Database.Address,
+		Port:     conf.Database.Port,
+		Username: conf.Database.Username,
+		Password: conf.Database.Password,
+		Database: conf.Database.Database,
+		SSLMode:  conf.Database.SSLMode,
 
-			MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
-			MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
-			ConnMaxLifetime: conf.Database.ConnMaxLifetime,
-			MaxIdleConns:    conf.Database.MaxIdleConns,
-			MaxOpenConns:    conf.Database.MaxOpenConns,
-		}, mtrs)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using postgresql database")
-	default:
-		log.Panic("Inside configuration file database.kind must be [postgresql|memory]")
+		MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
+		MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
+		ConnMaxLifetime: conf.Database.ConnMaxLifetime,
+		MaxIdleConns:    conf.Database.MaxIdleConns,
+		MaxOpenConns:    conf.Database.MaxOpenConns,
+	}, mtrs)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Select the consumer
-	switch conf.Consumer.Kind {
-	case "rabbitmq":
-		qc, err = rmq.New(&consumer.Config{
-			Name:               conf.Application.Name,
-			Address:            conf.Consumer.Address,
-			Port:               conf.Consumer.Port,
-			RequestedHeartbeat: conf.Consumer.RequestedHeartbeat,
-			Username:           conf.Consumer.Username,
-			Password:           conf.Consumer.Password,
-			VirtualHost:        conf.Consumer.VirtualHost,
-			Queue: struct {
-				Name          string
-				RoutingKey    string
-				Durable       bool
-				AutoDelete    bool
-				Exclusive     bool
-				AutoACK       bool
-				PrefetchCount int
-				PrefetchSize  int
-				Args          map[string]interface{}
-			}{
-				conf.Consumer.Queue.Name,
-				conf.Consumer.Queue.RoutingKey,
-				conf.Consumer.Queue.Durable,
-				conf.Consumer.Queue.AutoDelete,
-				conf.Consumer.Queue.Exclusive,
-				conf.Consumer.Queue.AutoACK,
-				conf.Consumer.Queue.PrefetchCount,
-				conf.Consumer.Queue.PrefetchSize,
-				conf.Consumer.Queue.Args,
-			},
-			Exchange: struct {
-				Name       string
-				Kind       string
-				Durable    bool
-				AutoDelete bool
-				Args       map[string]interface{}
-			}{
-				conf.Consumer.Exchange.Name,
-				conf.Consumer.Exchange.Kind,
-				conf.Consumer.Exchange.Durable,
-				conf.Consumer.Exchange.AutoDelete,
-				conf.Consumer.Exchange.Args,
-			},
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using rabbitmq consumer")
-	default:
-		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
+	log.Info("Using rabbitmq consumer")
+	qc, err := rmq.New(&consumer.Config{
+		Name:               conf.Application.Name,
+		Address:            conf.Consumer.Address,
+		Port:               conf.Consumer.Port,
+		RequestedHeartbeat: conf.Consumer.RequestedHeartbeat,
+		Username:           conf.Consumer.Username,
+		Password:           conf.Consumer.Password,
+		VirtualHost:        conf.Consumer.VirtualHost,
+		Queue: struct {
+			Name          string
+			RoutingKey    string
+			Durable       bool
+			AutoDelete    bool
+			Exclusive     bool
+			AutoACK       bool
+			PrefetchCount int
+			PrefetchSize  int
+			Args          map[string]interface{}
+		}{
+			conf.Consumer.Queue.Name,
+			conf.Consumer.Queue.RoutingKey,
+			conf.Consumer.Queue.Durable,
+			conf.Consumer.Queue.AutoDelete,
+			conf.Consumer.Queue.Exclusive,
+			conf.Consumer.Queue.AutoACK,
+			conf.Consumer.Queue.PrefetchCount,
+			conf.Consumer.Queue.PrefetchSize,
+			conf.Consumer.Queue.Args,
+		},
+		Exchange: struct {
+			Name       string
+			Kind       string
+			Durable    bool
+			AutoDelete bool
+			Args       map[string]interface{}
+		}{
+			conf.Consumer.Exchange.Name,
+			conf.Consumer.Exchange.Kind,
+			conf.Consumer.Exchange.Durable,
+			conf.Consumer.Exchange.AutoDelete,
+			conf.Consumer.Exchange.Args,
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
