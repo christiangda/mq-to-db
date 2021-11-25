@@ -28,7 +28,7 @@ This is a close image of how it works:
 * [Golang](https://golang.org/pkg/net/http/pprof/) `pprof` enabled via `--profile` command line when starting the service
 * Prometheus metrics for consumers, storage workers, go statistics, and database
 * [Grafana](https://grafana.com/) dashboard for [Prometheus.io](https://prometheus.io/) metrics
-* Dockerfile multi-stage build
+* [Dockerfile](Dockerfile) multi-stage build
 * Makefile to facilitate the project builds
 * [docker-compose file](https://github.com/christiangda/mq-to-db/blob/master/docker-compose.yaml) and [configuration](https://github.com/christiangda/mq-to-db/tree/master/docker-compose) to testing all elements
 * docker images at [docker-hub](https://hub.docker.com/repository/docker/christiangda/mq-to-db) and [Github Packages](https://github.com/christiangda/mq-to-db/packages)
@@ -117,10 +117,10 @@ docker stop postgresql
 ```bash
 git clone https://github.com/christiangda/mq-to-db.git
 cd mq-to-db/
-go run -race  ./cmd/mq-to-db/main.go --help
+go run -race ./cmd/mq-to-db/main.go --help
 
 # and then
-go run -race  ./cmd/mq-to-db/main.go --configFile config-sample.yaml
+go run -race ./cmd/mq-to-db/main.go --configFile config-sample.yaml
 ```
 
 __NOTE:__ the parameter `-race`is to check [race conditions](https://blog.golang.org/race-detector) because we are using [Go Concurrency](https://blog.golang.org/pipelines)
@@ -153,7 +153,7 @@ Here I use `master tag`, but you can see all [releases here](https://hub.docker.
 docker pull christiangda/mq-to-db:master
 
 # see available option
-docker run --rm  --name mq-to-db christiangda/mq-to-db:master - --help
+docker run --rm --name mq-to-db christiangda/mq-to-db:master - --help
 
 # run with a config file mapped and with profile option
 docker run --rm -v <path to config file>:/etc/mq-to-db/config.yaml --name mq-to-db christiangda/mq-to-db:master - --profile
@@ -192,7 +192,7 @@ make
 __NOTES__ related to make
 
 * 1. This create a cross-compiling binaries and also Docker Image (linux 64bits)
-* 2. Check the [Makefile](Makefile) to see the `The make available targets options`
+* 2. Check the [Makefile](Makefile) to see `The make available targets options`
 
 ## References
 

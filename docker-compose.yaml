@@ -1,39 +1,41 @@
 ---
 version: "3.5"
 
-# volumes:
-#   prometheus_data: {}
-#   grafana_data: {}
-#   postgresql_data: {}
-#   rabbitmq_data: {}
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+  postgresql_data: {}
+  rabbitmq_data: {}
 
-# networks:
-#   development:
+networks:
+  development:
 
 services:
   # Database
   postgresql:
     container_name: postgresql
-    privileged: true
-    image: postgres:11
-    network_mode: bridge
-    # networks:
-    #   - development
+    image: postgres:9.6.24
+    #privileged: true
+    #network_mode: bridge
+    networks:
+      - development
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: postgres
     ports:
       - 5432:5432
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
     restart: always
 
   # Queue system
   rabbitmq:
     container_name: rabbitmq
     image: rabbitmq:3-management
-    network_mode: bridge
-    # networks:
-    #   - development
+    #network_mode: bridge
+    networks:
+      - development
     ports:
       - 5672:5672
       - 15672:15672
@@ -43,17 +45,17 @@ services:
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.26.0
-    privileged: true
-    network_mode: bridge
-    # networks:
-    #   - development
+    #privileged: true
+    #network_mode: bridge
+    networks:
+      - development
     links:
       - mq-to-db-01
       - mq-to-db-02
     user: root
     volumes:
       - ./docker-compose/prometheus/:/etc/prometheus/:Z
-      #- prometheus_data:/prometheus
+      - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
@@ -63,10 +65,10 @@ services:
   grafana:
     container_name: grafana
     image: grafana/grafana:7.5.4
-    privileged: true
-    network_mode: bridge
-    # networks:
-    #   - development
+    #privileged: true
+    #network_mode: bridge
+    networks:
+      - development
     links:
       - prometheus
     environment:
@@ -75,7 +77,7 @@ services:
     volumes:
       - ./docker-compose/grafana/provisioning/:/etc/grafana/provisioning/
       - ./docker-compose/grafana/dashboards/:/grafana/dashboards/mq-to-db/:Z
-      #- grafana_data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     ports:
       - 3000:3000
     depends_on:
@@ -85,10 +87,10 @@ services:
   # mq-to-db
   mq-to-db-01:
     container_name: mq-to-db-01
-    privileged: true
-    network_mode: bridge
-    # networks:
-    #   - development
+    #privileged: true
+    #network_mode: bridge
+    networks:
+      - development
     build:
       dockerfile: Dockerfile
       context: ./
@@ -117,10 +119,10 @@ services:
 
   mq-to-db-02:
     container_name: mq-to-db-02
-    privileged: true
-    network_mode: bridge
-    # networks:
-    #   - development
+    #privileged: true
+    #network_mode: bridge
+    networks:
+      - development
     build:
       dockerfile: Dockerfile
       context: ./
