@@ -48,7 +48,6 @@ type Metrics struct {
 
 // New return all the metrics
 func New(c *config.Config) *Metrics {
-
 	h := promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{
@@ -87,7 +86,8 @@ func New(c *config.Config) *Metrics {
 		ConsumerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "consumer_running",
-			Help:      "Number of consumer running"},
+			Help:      "Number of consumer running",
+		},
 			[]string{
 				// Consumer name
 				"name",
@@ -95,7 +95,8 @@ func New(c *config.Config) *Metrics {
 		ConsumerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "consumer_messages_total",
-			Help:      "Number of messages consumed my consumers."},
+			Help:      "Number of messages consumed my consumers.",
+		},
 			[]string{
 				// Consumer name
 				"name",
@@ -105,7 +106,8 @@ func New(c *config.Config) *Metrics {
 		StorageWorkerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_worker_running",
-			Help:      "Number of Storage Workers running"},
+			Help:      "Number of Storage Workers running",
+		},
 			[]string{
 				// Storage Worker name
 				"name",
@@ -113,7 +115,8 @@ func New(c *config.Config) *Metrics {
 		StorageWorkerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_worker_messages_total",
-			Help:      "Number of messages consumed my storage_workers."},
+			Help:      "Number of messages consumed my storage_workers.",
+		},
 			[]string{
 				// Storage Worker name
 				"name",
@@ -133,64 +136,76 @@ func New(c *config.Config) *Metrics {
 		StorerMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_messages_total",
-			Help:      "Number of messages processed by storer."},
+			Help:      "Number of messages processed by storer.",
+		},
 		),
 		StorerMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_messages_errors_total",
-			Help:      "Number of messages with errors processed by storer."},
+			Help:      "Number of messages with errors processed by storer.",
+		},
 		),
 		StorerSQLMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_sql_messages_total",
-			Help:      "Number of sql messages processed by storer."},
+			Help:      "Number of sql messages processed by storer.",
+		},
 		),
 		StorerSQLMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_sql_messages_errors_total",
-			Help:      "Number of sql messages with errors processed by storer."},
+			Help:      "Number of sql messages with errors processed by storer.",
+		},
 		),
 		StorerSQLMessagesToDBTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_sql_messages_to_db_total",
-			Help:      "Number of sql messages sent to database by storer."},
+			Help:      "Number of sql messages sent to database by storer.",
+		},
 		),
 		StorerSQLMessagesToDBErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_sql_messages_to_db_errors_total",
-			Help:      "Number of sql messages with errors sent to database by storer."},
+			Help:      "Number of sql messages with errors sent to database by storer.",
+		},
 		),
 		StorerMessagesAckTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_messages_ack_total",
-			Help:      "Number of messages ack into mq system."},
+			Help:      "Number of messages ack into mq system.",
+		},
 		),
 		StorerMessagesRejectedTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storer_messages_rejected_total",
-			Help:      "Number of messages rejected into mq system."},
+			Help:      "Number of messages rejected into mq system.",
+		},
 		),
 
 		// Storage
 		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_ping_total",
-			Help:      "Number of ping executed by storage."},
+			Help:      "Number of ping executed by storage.",
+		},
 		),
 		StoragePingTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_ping_timeout_total",
-			Help:      "Number of ping with timeouts executed by storage."},
+			Help:      "Number of ping with timeouts executed by storage.",
+		},
 		),
 		StorageExecTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_exec_total",
-			Help:      "Number of exec executed by storage."},
+			Help:      "Number of exec executed by storage.",
+		},
 		),
 		StorageExecTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: c.Application.MetricsNamespace,
 			Name:      "storage_exec_timeout_total",
-			Help:      "Number of exec with timeouts executed by storage."},
+			Help:      "Number of exec with timeouts executed by storage.",
+		},
 		),
 	}
 
@@ -234,7 +249,6 @@ func (m Metrics) GetHandler() http.Handler {
 
 // EnableDBStats enable the database/sql stats metrics
 func (m Metrics) EnableDBStats(db storage.Store) {
-
 	// DB Stats from database/sql
 	dbStats := NewDBMetricsCollector(m.namespace, "db", db)
 	prometheus.MustRegister(dbStats)
