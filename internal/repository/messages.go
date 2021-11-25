@@ -1,7 +1,8 @@
-package storer
+package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
@@ -11,7 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Results is a return value from processor
+//go:generate go run github.com/golang/mock/mockgen@v1.6.0 -package=mocks -destination=../../mocks/repository/messages_mocks.go -source=messages.go SQLService
+
+// SQLService is the interface to consume SQL service methods
+type SQLService interface {
+	ExecContext(ctx context.Context, q string) (sql.Result, error)
+}
+
+// Results is returned by the Store method
 type Results struct {
 	By           string      // who belongs this results
 	RowsAffected int64       // Numbers of row affected by the execution of the query
@@ -20,78 +28,75 @@ type Results struct {
 	Error        error       // Error occurred if exist
 }
 
-// ToJSON export the configuration in JSON format
 func (r *Results) ToJSON() string {
-	out, _ := json.Marshal(r)
+	out, err := json.Marshal(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return string(out)
 }
 
-// Storer ...
-type Storer interface {
-	Store(m consumer.Messages) Results
-}
-
-// storerConf is a type of function that store the consumer.Messages
-type storerConf struct {
+// MessageRepository represents a message repository
+type MessageRepository struct {
 	ctx  context.Context
-	st   storage.Store
+	sql  SQLService
 	mtrs *metrics.Metrics
 }
 
-// New ...
-func New(ctx context.Context, st storage.Store, mtrs *metrics.Metrics) Storer {
-	return &storerConf{
+// New return
+func NewMessageRepository(ctx context.Context, st storage.Store, mtrs *metrics.Metrics) *MessageRepository {
+	return &MessageRepository{
 		ctx:  ctx,
-		st:   st,
+		sql:  st,
 		mtrs: mtrs,
 	}
 }
 
-// Store ...
-func (s *storerConf) Store(m consumer.Messages) Results {
-	log.Debugf("Processing message: %s", m.Payload)
+func (mr *MessageRepository) Store(msg consumer.Messages) Results {
+	log.Debugf("Processing message: %s", msg.Payload)
 
-	s.mtrs.StorerMessagesTotal.Inc()
+	mr.mtrs.StorerMessagesTotal.Inc()
 
-	sqlm, err := messages.NewSQL(m.Payload) // serialize message payload as SQL message type
+	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
 	if err != nil {
 
-		s.mtrs.StorerMessagesErrorsTotal.Inc()
-		s.mtrs.StorerSQLMessagesErrorsTotal.Inc()
+		mr.mtrs.StorerMessagesErrorsTotal.Inc()
+		mr.mtrs.StorerSQLMessagesErrorsTotal.Inc()
 
-		if err = m.Reject(false); err != nil {
+		if err = msg.Reject(false); err != nil {
 
-			s.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.StorerMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
-				Content: m.MessageID,
+				Content: msg.MessageID,
 				Reason:  "Impossible to serialize message to SQL type and reject the message from queue system",
 			}
 		}
 		return Results{
 			Error:   err,
-			Content: m.Payload,
+			Content: msg.Payload,
 			Reason:  "Impossible to serialize message to SQL type",
 		}
 	}
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-	s.mtrs.StorerSQLMessagesTotal.Inc()
+	mr.mtrs.StorerSQLMessagesTotal.Inc()
 
-	result, err := s.st.ExecContext(s.ctx, sqlm.Content.Sentence)
+	result, err := mr.sql.ExecContext(mr.ctx, sqlm.Content.Sentence)
 	if err != nil {
 
-		s.mtrs.StorerMessagesErrorsTotal.Inc()
-		s.mtrs.StorerSQLMessagesToDBErrorsTotal.Inc()
+		mr.mtrs.StorerMessagesErrorsTotal.Inc()
+		mr.mtrs.StorerSQLMessagesToDBErrorsTotal.Inc()
 
-		if err = m.Reject(false); err != nil {
+		if err = msg.Reject(false); err != nil {
 
-			s.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.StorerMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
-				Content: m.MessageID,
+				Content: msg.MessageID,
 				Reason:  "Impossible to execute sentence into database and reject the message from queue system",
 			}
 		}
@@ -102,17 +107,17 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 		}
 	}
 
-	s.mtrs.StorerSQLMessagesToDBTotal.Inc()
+	mr.mtrs.StorerSQLMessagesToDBTotal.Inc()
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		if err = m.Reject(false); err != nil {
+		if err = msg.Reject(false); err != nil {
 
-			s.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.StorerMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
-				Content: m.MessageID,
+				Content: msg.MessageID,
 				Reason:  "Impossible get result from database and reject the message from queue system",
 			}
 		}
@@ -124,14 +129,14 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 	}
 	log.Debugf("SQL Execution return: %v", rows)
 
-	if err := m.Ack(); err != nil {
-		if err = m.Reject(false); err != nil {
+	if err := msg.Ack(); err != nil {
+		if err = msg.Reject(false); err != nil {
 
-			s.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.StorerMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
-				Content: m.MessageID,
+				Content: msg.MessageID,
 				Reason:  "Impossible execute ack and reject the message from queue system",
 			}
 		}
@@ -142,7 +147,7 @@ func (s *storerConf) Store(m consumer.Messages) Results {
 		}
 	}
 	log.Debugf("Ack the message: %s", sqlm.ToJSON())
-	s.mtrs.StorerMessagesAckTotal.Inc()
+	mr.mtrs.StorerMessagesAckTotal.Inc()
 
 	return Results{RowsAffected: rows}
 }

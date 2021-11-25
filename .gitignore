@@ -14,9 +14,11 @@
 # Dependency directories (remove the comment below to include it)
 vendor/
 
-mq-to-db
+# binaries
+bin/
+build/
+dist/
 main
-mq-to-db*
 
 /.history
 /.github

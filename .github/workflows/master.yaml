@@ -34,15 +34,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test Linux Platform Only
-        run: make go-test
-
-      # - name: Check code modifications
-      #   run: git diff --exit-code
-
-  #      - name: Coveralls
-  #        uses: coverallsapp/github-action@master
-  #        with:
-  #          github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: make test
 
   build:
     name: Build
@@ -61,75 +53,5 @@ jobs:
       - name: Build
         run: make
 
-      # - name: Build Cross-Platform
-      #   run: make full
-
       - name: List Workspace Files
-        run: ls -la .
-
-      # - name: List .build Files
-      #   run: ls -la .build
-      # - name: Upload .build artifacts
-      #   uses: actions/upload-artifact@v1
-      #   with:
-      #     name: .build
-      #     path: .build
-
-  publish_docker_images:
-    name: Publish Docker Images
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.GO_VERSION }}
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-
-      - name: Docker Version
-        run: docker version
-
-      # - name: Download .build artifacts from Build Step
-      #   uses: actions/download-artifact@v1
-      #   with:
-      #     name: .build
-      #     path: .build
-
-      # - name: Assign Execution Permission to Binaries
-      #   run: chmod -R +x .build/*/*
-
-      - name: List Workspace Files
-        run: ls -la .
-
-      # - name: List .build Files
-      #   run: ls -la .build
-
-      - name: Build Docker Images for docker hub
-        run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Show Local Docker Images
-        run: docker images
-
-      - name: Logging in Docker Hub
-        run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
-
-      - name: Publish Images in Docker Hub
-        run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
-
-      # - name: Publish Manifest in Docker Hub
-      #   run: make container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Build Docker Images for Github Packages
-        run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Show Local Docker Images
-        run: docker images
-
-      - name: Logging in GitHub Packages
-        run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
-
-      - name: Publish Images in GitHub Packages
-        run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO ARCH=$DOCKER_BUILD_ARCHS
+        run: tree .

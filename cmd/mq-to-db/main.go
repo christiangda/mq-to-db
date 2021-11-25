@@ -22,9 +22,9 @@ import (
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/metrics"
+	"github.com/christiangda/mq-to-db/internal/repository"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
-	"github.com/christiangda/mq-to-db/internal/storer"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
@@ -296,8 +296,8 @@ func main() {
 		}).Fatal("Error connecting to queue server")
 	}
 
-	// storer to called it every time we need to store a consumer.Message into the database
-	strer := storer.New(appCtx, db, mtrs)
+	// repository to called it every time we need to store a consumer.Message into the database
+	strer := repository.NewMessageRepository(appCtx, db, mtrs)
 
 	// Logic of channels for consumer and for storage
 	// it is a go pipeline model https://blog.golang.org/pipelines
@@ -311,7 +311,7 @@ func main() {
 	sliceChanMessages := make([]<-chan consumer.Messages, conf.Dispatcher.ConsumerConcurrency)
 
 	// Slice of workers
-	sliceChanStorageWorkers := make([]<-chan storer.Results, conf.Dispatcher.StorageWorkers)
+	sliceChanStorageWorkers := make([]<-chan repository.Results, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
 	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
@@ -332,7 +332,7 @@ func main() {
 		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
 	}
 
-	// Merge all channels from workers in only one channel of type <-chan storer.Results
+	// Merge all channels from workers in only one channel of type <-chan repository.Results
 	chanResults := mergeResultsChans(appCtx, sliceChanStorageWorkers...)
 
 	// Listen result in different routine
@@ -493,8 +493,8 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 }
 
 // This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storer.Storer) <-chan storer.Results {
-	out := make(chan storer.Results)
+func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st *repository.MessageRepository) <-chan repository.Results {
+	out := make(chan repository.Results)
 	go func() {
 		defer close(out)
 
@@ -569,12 +569,12 @@ func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Message
 
 // mergeResultsChan merge all the channels of storer.Results in only one
 // bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
-func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <-chan storer.Results {
+func mergeResultsChans(ctx context.Context, channels ...<-chan repository.Results) <-chan repository.Results {
 	var wg sync.WaitGroup
-	out := make(chan storer.Results)
+	out := make(chan repository.Results)
 
 	// internal function to merge channels in only one
-	multiplex := func(channel <-chan storer.Results) {
+	multiplex := func(channel <-chan repository.Results) {
 		defer wg.Done()
 		for ch := range channel {
 			select {

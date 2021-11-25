@@ -3,6 +3,7 @@ module github.com/christiangda/mq-to-db
 go 1.17
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/lib/pq v1.10.4
 	github.com/prometheus/client_golang v1.11.0
 	github.com/sirupsen/logrus v1.8.1

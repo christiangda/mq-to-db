@@ -25,8 +25,8 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - name: Test Linux Platform Only
-        run: make go-test
+      - name: Test
+        run: make test
 
   build:
     name: Build
@@ -42,22 +42,25 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - name: Build
-        run: make
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      # - name: Build Cross-Platform
-      #   run: make full
+      - name: Build Distribution Cross-Platform
+        run: make build-dist
 
       - name: List Workspace Files
-        run: ls -la .
+        run: tree .
 
-      # - name: List .build Files
-      #   run: ls -la .build
-      # - name: Upload .build artifacts
-      #   uses: actions/upload-artifact@v1
-      #   with:
-      #     name: .build
-      #     path: .build
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: ./dist/
 
   publish_docker_images:
     name: Publish Docker Images
@@ -76,33 +79,24 @@ jobs:
       - name: Docker Version
         run: docker version
 
-      # - name: Download .build artifacts from Build Step
-      #   uses: actions/download-artifact@v1
-      #   with:
-      #     name: .build
-      #     path: .build
-
-      # - name: Assign Execution Permission to Binaries
-      #   run: chmod -R +x .build/*/*
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: ./dist/
 
       - name: List Workspace Files
-        run: ls -la .
-
-      # - name: List .build Files
-      #   run: ls -la .build
-
-      - name: Set Env Var RELEASE_VERSION
-        run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-
-      - name: Show RELEASE_VERSION
-        run: echo ${{ env.RELEASE_VERSION }}
+        run: tree .
 
       - name: Build Docker Images for docker hub
-        run: make container-build CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Docker Tag Images Latest
-        run: make container-tag-latest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-build
 
       - name: Show Local Docker Images
         run: docker images
@@ -111,22 +105,13 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
 
       - name: Publish Images in Docker Hub
-        run: make container-publish CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
+        run: make container-publish-docker
 
-      # - name: Publish Manifest in Docker Hub
-      #   run: container-manifest CONTAINER_IMAGE_REPO=$DOCKER_HUB_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
+      # - name: Logging in GitHub Packages
+      #   run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
 
-      - name: Build Docker Images for Github Packages
-        run: make container-build CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Docker Tag Images Latest
-        run: make container-tag-latest CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
-
-      - name: Logging in GitHub Packages
-        run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
-
-      - name: Publish Images in GitHub Packages
-        run: make container-publish CONTAINER_IMAGE_REPO=$GH_PACKAGE_REPO CONTAINER_IMAGE_TAG=${{ env.RELEASE_VERSION }} ARCH=$DOCKER_BUILD_ARCHS
+      # - name: Publish Images in GitHub Packages
+      #   run: make container-publish-github
 
   create_github_release:
     name: Create Github Release
@@ -138,54 +123,16 @@ jobs:
 
       - name: Create Release
         id: create_github_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          name: Release ${{ github.ref }}
           body: |
             See the file: CHANGELOG.md
           draft: false
           prerelease: false
-
-  publish_tarballs:
-    name: Publish Tarballs
-    needs: create_github_release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.GO_VERSION }}
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-
-      # - name: Download .build artifacts from Build Step
-      #   uses: actions/download-artifact@v1
-      #   with:
-      #     name: .build
-      #     path: .build
-
-      # - name: Assign Execution Permission to Binaries
-      #   run: chmod -R +x .build/*/*
-
-      - name: List Workspace Files
-        run: ls -la .
-      # - name: List .build Files
-      #   run: ls -la .build
-      # - name: Build Tarballs Files
-      #   run: promu crossbuild tarballs
-      # - name: Checksum Tarballs Files
-      #   run: promu checksum .tarballs
-      # - name: Release Tarballs Files
-      #   run: promu release -v .tarballs
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # - name: Upload Artifacts to Github
-      #   uses: actions/upload-artifact@v1
-      #   with:
-      #     name: releases
-      #     path: .tarballs
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            LICENSE
+            dist/*
