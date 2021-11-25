@@ -41,9 +41,8 @@ type Config struct {
 
 // GetURI return the consumer URI
 func (cc *Config) GetURI() (string, error) {
-
 	if cc.Address == "" || cc.Port == 0 {
-		return "", errors.New("Username or Port empty")
+		return "", errors.New("address or port empty")
 	}
 
 	if cc.Username == "" {
@@ -90,7 +89,7 @@ type Messages struct {
 // Ack is called when the job is finished.
 func (m *Messages) Ack() error {
 	if m.Acknowledger == nil {
-		return errors.New("Error acknowledging message: " + m.MessageID)
+		return errors.New("error acknowledging message: " + m.MessageID)
 	}
 	return m.Acknowledger.Ack()
 }
@@ -99,7 +98,7 @@ func (m *Messages) Ack() error {
 // job should be put back in the queue.
 func (m *Messages) Reject(requeue bool) error {
 	if m.Acknowledger == nil {
-		return errors.New("Error rejecting message: " + m.MessageID)
+		return errors.New("error rejecting message: " + m.MessageID)
 	}
 	return m.Acknowledger.Reject(requeue)
 }
