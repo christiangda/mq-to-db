@@ -18,6 +18,10 @@ type SQLService interface {
 	ExecContext(ctx context.Context, q string) (sql.Result, error)
 }
 
+// type MetricsService interface {
+// 	Inc()
+// }
+
 // Results is returned by the Store method
 type Results struct {
 	By           string      // who belongs this results
@@ -55,17 +59,17 @@ func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Met
 func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 	log.Debugf("Processing message: %s", msg.Payload)
 
-	mr.mtrs.StorerMessagesTotal.Inc()
+	mr.mtrs.RepositoryMessagesTotal.Inc()
 
 	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
 	if err != nil {
 
-		mr.mtrs.StorerMessagesErrorsTotal.Inc()
-		mr.mtrs.StorerSQLMessagesErrorsTotal.Inc()
+		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
+		mr.mtrs.RepositorySQLMessagesErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -81,17 +85,17 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 	}
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-	mr.mtrs.StorerSQLMessagesTotal.Inc()
+	mr.mtrs.RepositorySQLMessagesTotal.Inc()
 
 	result, err := mr.sql.ExecContext(mr.ctx, sqlm.Content.Sentence)
 	if err != nil {
 
-		mr.mtrs.StorerMessagesErrorsTotal.Inc()
-		mr.mtrs.StorerSQLMessagesToDBErrorsTotal.Inc()
+		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
+		mr.mtrs.RepositorySQLMessagesToDBErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -106,13 +110,13 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 		}
 	}
 
-	mr.mtrs.StorerSQLMessagesToDBTotal.Inc()
+	mr.mtrs.RepositorySQLMessagesToDBTotal.Inc()
 
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -131,7 +135,7 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 	if err := msg.Ack(); err != nil {
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.StorerMessagesRejectedTotal.Inc()
+			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -146,7 +150,7 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 		}
 	}
 	log.Debugf("Ack the message: %s", sqlm.ToJSON())
-	mr.mtrs.StorerMessagesAckTotal.Inc()
+	mr.mtrs.RepositoryMessagesAckTotal.Inc()
 
 	return Results{RowsAffected: rows}
 }
