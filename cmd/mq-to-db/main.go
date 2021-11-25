@@ -5,31 +5,28 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"text/template"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
-	"github.com/christiangda/mq-to-db/internal/logger"
-	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
 	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
 	"github.com/christiangda/mq-to-db/internal/storer"
-
-	"os"
-	"strings"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
@@ -54,7 +51,6 @@ var (
 
 func init() { // package initializer
 	appHost, _ = os.Hostname()
-	log.AddHook(logger.NewGlobalFieldsHook(appName, appHost, conf.Application.Version))
 
 	// Set default values
 	conf.Application.Name = appName
@@ -72,7 +68,7 @@ func init() { // package initializer
 	conf.Application.BuildInfo = version.GetVersionInfoExtended()
 
 	// Server conf flags
-	flag.StringVar(&conf.Server.Address, "server.address", "", "Server address, empty means all address") //empty means all the address
+	flag.StringVar(&conf.Server.Address, "server.address", "", "Server address, empty means all address") // empty means all the address
 	flag.IntVar(&conf.Server.Port, "server.port", 8080, "Server port")
 	flag.DurationVar(&conf.Server.ReadTimeout, "server.readTimeout", 2*time.Second, "Server ReadTimeout")
 	flag.DurationVar(&conf.Server.WriteTimeout, "server.writeTimeout", 5*time.Second, "Server WriteTimeout")
@@ -83,7 +79,7 @@ func init() { // package initializer
 	flag.BoolVar(&conf.Server.Debug, "debug", false, "debug")
 	flag.BoolVar(&conf.Server.Profile, "profile", false, "Enable program profile")
 	flag.StringVar(&conf.Server.LogFormat, "logFormat", "text", "Log Format [text|json]")
-	flag.StringVar(&conf.Server.LogLevel, "logLevel", "info", "Log Level [debug|info|warning|panic|fatal]")
+	flag.StringVar(&conf.Server.LogLevel, "logLevel", "info", "Log Level [panic|fatal|error|warn|info|debug|trace]")
 
 	// Application conf flags
 	flag.StringVar(&conf.Application.ConfigFile, "configFile", "config", "Configuration file")
@@ -94,7 +90,7 @@ func init() { // package initializer
 	showBuildInfo := flag.Bool("buildInfo", false, "Show application build information")
 
 	flag.Parse()
-	//necessary to read from Env Vars too
+	// necessary to read from Env Vars too
 	if err := v.BindPFlags(flag.CommandLine); err != nil {
 		log.Fatal(err)
 	}
@@ -114,38 +110,31 @@ func init() { // package initializer
 		os.Exit(0)
 	}
 
-	// Logs conf
-	if strings.ToLower(conf.Server.LogFormat) == "json" {
-		log.SetFormatter(&logrus.JSONFormatter{})
-	} else {
-		log.SetFormatter(&logrus.TextFormatter{DisableColors: false, DisableTimestamp: false, FullTimestamp: true})
-	}
-
-	switch conf.Server.LogLevel {
-	case "debug":
-		log.SetLevel(logrus.DebugLevel)
-	case "info":
-		log.SetLevel(logrus.InfoLevel)
-	case "warning":
-		log.SetLevel(logrus.WarnLevel)
-	case "panic":
-		log.SetLevel(logrus.PanicLevel)
-	case "fatal":
-		log.SetLevel(logrus.FatalLevel)
+	switch strings.ToLower(conf.Server.LogFormat) {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	case "text":
+		log.SetFormatter(&log.TextFormatter{})
 	default:
-		log.SetLevel(logrus.InfoLevel)
+		log.Warnf("unknown log format: %s, using text", conf.Server.LogFormat)
+		log.SetFormatter(&log.TextFormatter{DisableColors: false, DisableTimestamp: false, FullTimestamp: true})
 	}
 
-	// if --debug, force debug log level no matter what value is in logLevel
 	if conf.Server.Debug {
-		log.SetLevel(logrus.DebugLevel)
+		conf.Server.LogLevel = "debug"
+	}
+
+	// set the configured log level
+	if level, err := log.ParseLevel(conf.Server.LogLevel); err == nil {
+		log.SetLevel(level)
+	} else {
+		log.Errorf("invalid log level %s", err)
 	}
 
 	log.Info("Application initialized")
 }
 
 func main() {
-
 	log.Info("Starting application")
 
 	// Viper default values to conf parameters when config file doesn't have it
@@ -198,8 +187,8 @@ func main() {
 	// Env Vars
 	log.Debugf("Environment Variables: %s", os.Environ())
 	v.AutomaticEnv()
-	//v.AllowEmptyEnv(true)
-	//Substitute the _ to .
+	// v.AllowEmptyEnv(true)
+	// Substitute the _ to .
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // because EnvVar are SERVER_PORT and config is server.port
 
 	log.Infof("Loading configuration file: %s", conf.Application.ConfigFile)
@@ -320,7 +309,7 @@ func main() {
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"server": conf.Database.Address,
 			"port":   conf.Database.Port,
 		}).Fatal("Error connecting to database server")
@@ -329,7 +318,7 @@ func main() {
 	// Try to connect to queue consumer
 	log.Infof("Connecting to queue")
 	if err := qc.Connect(); err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"server":   conf.Consumer.Address,
 			"port":     conf.Consumer.Port,
 			"queue":    conf.Consumer.Queue.Name,
@@ -355,7 +344,7 @@ func main() {
 	sliceChanStorageWorkers := make([]<-chan storer.Results, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
-	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
+	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
 		// ids for consumers
 		id := fmt.Sprintf("%s-%s-consumer-%d", appHost, conf.Application.Name, i)
@@ -366,7 +355,7 @@ func main() {
 	chanMessages := mergeMessagesChans(appCtx, sliceChanMessages...)
 
 	// Start storage workers
-	log.WithFields(logrus.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
+	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
@@ -380,7 +369,7 @@ func main() {
 	go func() {
 		for r := range chanResults {
 			if r.Error != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(log.Fields{
 					"worker": r.By,
 				}).Errorf("%s-%s", r.Reason, r.Error)
 			}
@@ -429,18 +418,16 @@ func main() {
 
 	// start httpserver in a go routine
 	go func() {
-
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"server": conf.Server.Address,
 			"port":   conf.Server.Port,
 		}).Info("Starting http server")
 
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"server": conf.Server.Address,
 				"port":   conf.Server.Port,
 			}).Errorf("Error starting http server %s", err)
-
 		}
 		osSignal <- true // make a gratefull shutdown
 	}()
@@ -495,9 +482,9 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 	go func() {
 		defer close(out)
 
-		log.WithFields(logrus.Fields{"consumer": id}).Infof("Starting consumer")
+		log.WithFields(log.Fields{"consumer": id}).Infof("Starting consumer")
 
-		//prometheus metrics
+		// prometheus metrics
 		mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// reading from message queue
@@ -515,7 +502,7 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 
 			case <-ctx.Done(): // When main routine cancel
 
-				log.WithFields(logrus.Fields{"consumer": id}).Warnf("Stoping consumer")
+				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping consumer")
 				mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				// closes the consumer queue and connection
@@ -541,9 +528,9 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 	go func() {
 		defer close(out)
 
-		log.WithFields(logrus.Fields{"worker": id}).Infof("Starting storage worker")
+		log.WithFields(log.Fields{"worker": id}).Infof("Starting storage worker")
 
-		//prometheus metrics
+		// prometheus metrics
 		mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
@@ -565,7 +552,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 
 			case <-ctx.Done(): // When main routine cancel
 
-				log.WithFields(logrus.Fields{"worker": id}).Warnf("Stoping storage worker")
+				log.WithFields(log.Fields{"worker": id}).Warnf("Stoping storage worker")
 				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				return // go out of the for loop
@@ -699,7 +686,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 
 	t := template.Must(template.New("index").Parse(indexHTMLTmpl))
 	if err := t.Execute(w, data); err != nil {
-		log.Errorf("Error rendering template: %s", err)
+		log.Errorf("error rendering template: %s", err)
 	}
 }
 

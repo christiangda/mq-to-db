@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"sync"
 
-	log "github.com/christiangda/mq-to-db/internal/logger"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 // DBStatsGetter is an interface that gets sql.DBStats.
@@ -33,7 +33,6 @@ type DBMetricsCollector struct {
 
 // NewDBMetricsCollector return all the metrics
 func NewDBMetricsCollector(namespace, subsystem string, db DBStatsGetter) *DBMetricsCollector {
-
 	// NOTE: Take care of metrics name
 	// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 	mtrs := &DBMetricsCollector{

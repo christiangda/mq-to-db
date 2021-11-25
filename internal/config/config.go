@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	log "github.com/christiangda/mq-to-db/internal/logger"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 

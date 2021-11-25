@@ -3,7 +3,7 @@ package messages
 import (
 	"encoding/json"
 
-	log "github.com/christiangda/mq-to-db/internal/logger"
+	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,7 +42,6 @@ func (m *SQL) ValidDataConn() bool {
 		(m.Content.DB != "") &&
 		(m.Content.User != "") &&
 		(m.Content.Pass != ""))
-
 }
 
 // ToJSON export the SQL in JSON format
