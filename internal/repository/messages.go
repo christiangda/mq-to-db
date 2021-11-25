@@ -47,7 +47,7 @@ type MessageRepository struct {
 	mtrs *metrics.Metrics
 }
 
-// New return
+// NewMessageRepository return a new Message Repository instance
 func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Metrics) *MessageRepository {
 	return &MessageRepository{
 		ctx:  ctx,
@@ -56,6 +56,7 @@ func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Met
 	}
 }
 
+// Store stores a message in the database
 func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 	log.Debugf("Processing message: %s", msg.Payload)
 
