@@ -17,7 +17,7 @@ env:
   DOCKER_BUILD_ARCHS: "amd64"
   DOCKER_HUB_REPO: "docker.io/christiangda"
   GH_PACKAGE_REPO: "docker.pkg.github.com/christiangda/mq-to-db"
-  GO_VERSION: 1.16
+  GO_VERSION: 1.17
 
 jobs:
   test:

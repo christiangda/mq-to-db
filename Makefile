@@ -12,7 +12,7 @@ GIT_USER     ?= $(shell git config --get user.name | tr -d '\040\011\012\015\n')
 BUILD_DATE   ?= $(shell date +'%Y-%m-%dT%H:%M:%S')
 
 # Golang
-GO_VERSION       ?= 1.16
+GO_VERSION       ?= 1.17
 GO               ?= go
 GO_BUILD         ?= $(GO) build
 GO_INSTALL       ?= $(GO) install

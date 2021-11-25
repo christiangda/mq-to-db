@@ -4,7 +4,7 @@ ARG CONTAINER_OS="linux"
 ARG APP_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
-ARG GO_VERSION="1.16"
+ARG GO_VERSION="1.17"
 FROM golang:${GO_VERSION} AS build-container
 RUN apt install -y git gcc make
 ADD . /src
