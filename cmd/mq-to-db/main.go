@@ -20,7 +20,6 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/storage"
@@ -248,12 +247,6 @@ func main() {
 
 	// Select the consumer
 	switch conf.Consumer.Kind {
-	case "kafka":
-		qc, err = kafka.New(&consumer.Config{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using kafka consumer")
 	case "rabbitmq":
 		qc, err = rmq.New(&consumer.Config{
 			Name:               conf.Application.Name,
