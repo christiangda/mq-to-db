@@ -1,20 +1,9 @@
 package storage
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"time"
 )
-
-// Store interface
-type Store interface {
-	Connect(ctx context.Context) error
-	ExecContext(ctx context.Context, q string) (sql.Result, error)
-	Ping(ctx context.Context) error
-	Close() error
-	Stats() sql.DBStats
-}
 
 // Config is used to pass as argument to Store constructors
 type Config struct {

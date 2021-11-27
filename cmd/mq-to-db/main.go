@@ -10,21 +10,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"text/template"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
-	"github.com/christiangda/mq-to-db/internal/consumer"
-	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
+	"github.com/christiangda/mq-to-db/internal/dispatcher"
 	"github.com/christiangda/mq-to-db/internal/metrics"
+	"github.com/christiangda/mq-to-db/internal/queue"
 	"github.com/christiangda/mq-to-db/internal/repository"
 	"github.com/christiangda/mq-to-db/internal/storage"
-	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
@@ -210,7 +207,7 @@ func main() {
 
 	// Select the storage
 	log.Info("Using postgresql database")
-	db, err := pgsql.New(&storage.Config{
+	db, err := storage.NewPGSQL(&storage.Config{
 		Address:  conf.Database.Address,
 		Port:     conf.Database.Port,
 		Username: conf.Database.Username,
@@ -223,13 +220,13 @@ func main() {
 		ConnMaxLifetime: conf.Database.ConnMaxLifetime,
 		MaxIdleConns:    conf.Database.MaxIdleConns,
 		MaxOpenConns:    conf.Database.MaxOpenConns,
-	}, mtrs)
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Info("Using rabbitmq consumer")
-	qc, err := rmq.New(&consumer.Config{
+	qc, err := queue.NewRabbitMQ(&queue.Config{
 		Name:               conf.Application.Name,
 		Address:            conf.Consumer.Address,
 		Port:               conf.Consumer.Port,
@@ -296,55 +293,36 @@ func main() {
 		}).Fatal("Error connecting to queue server")
 	}
 
-	// repository to called it every time we need to store a consumer.Message into the database
+	// repository used to store a consumer.Message into the database
 	msgsRepo := repository.NewMessageRepository(appCtx, db, mtrs)
 
-	// Logic of channels for consumer and for storage
-	// it is a go pipeline model https://blog.golang.org/pipelines
-	// ********************************************
-
-	// slice of consumers
-	// where the consumers will put the chan of consumer.Messages
-	// this slice of channels (consumer.Messages) is used to comunicate consumers and storage workers
-	// but first every consumer generate a <-chan consumer.Messages witch need to me merge in only
-	// one channel before be ready to consume
-	sliceChanMessages := make([]<-chan consumer.Messages, conf.Dispatcher.ConsumerConcurrency)
-
-	// Slice of workers
-	sliceChanStorageWorkers := make([]<-chan repository.Results, conf.Dispatcher.StorageWorkers)
-
-	// Start Consumers
-	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
-	for i := 0; i < conf.Dispatcher.ConsumerConcurrency; i++ {
-		// ids for consumers
-		id := fmt.Sprintf("%s-%s-consumer-%d", appHost, conf.Application.Name, i)
-		sliceChanMessages[i] = messageConsumer(appCtx, id, qc)
+	// pseudo code
+	distpatcherConfig := dispatcher.Config{
+		ApplicationName:     conf.Application.Name,
+		HostName:            conf.Application.Name,
+		ConsumerConcurrency: conf.Dispatcher.ConsumerConcurrency,
+		StorageWorkers:      conf.Dispatcher.StorageWorkers,
 	}
 
-	// Merge all channels from consumers in only one channel of type <-chan consumer.Messages
-	chanMessages := mergeMessagesChans(appCtx, sliceChanMessages...)
+	consumer := dispatcher.NewConsumer(context.TODO(), qc, distpatcherConfig)
 
-	// Start storage workers
-	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.StorageWorkers}).Infof("Starting storage workers")
-	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
-		// ids for storage workers
-		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, msgsRepo)
-	}
+	storer := dispatcher.NewStorer(context.TODO(), msgsRepo, distpatcherConfig)
 
-	// Merge all channels from workers in only one channel of type <-chan repository.Results
-	chanResults := mergeResultsChans(appCtx, sliceChanStorageWorkers...)
-
-	// Listen result in different routine
 	go func() {
-		for r := range chanResults {
-			if r.Error != nil {
-				log.WithFields(log.Fields{
-					"worker": r.By,
-				}).Errorf("%s-%s", r.Reason, r.Error)
+		chanResults := storer.Store(consumer.Consume())
+		// Listen result in different routine
+		go func() {
+			for r := range chanResults {
+				if r.Error != nil {
+					log.WithFields(log.Fields{
+						"worker": r.By,
+					}).Errorf("%s-%s", r.Reason, r.Error)
+				}
 			}
-		}
+		}()
 	}()
+	// end of pseudo code
+
 	// ********************************************
 
 	// Filling global metrics
@@ -361,7 +339,7 @@ func main() {
 	// health check handler
 	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
 
-	// Profilling endpoints whe -profile or --profile
+	// Profilling endpoints when use -profile or --profile
 	if conf.Server.Profile {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/heap", pprof.Index)
@@ -444,160 +422,6 @@ func ListenOSSignals(osSignal *chan bool) {
 		// Notify main routine that shutdown was solicited
 		*osSignal <- true
 	}(osSignal)
-}
-
-// This function consume messages from queue system and return the messages as a channel of them
-func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-chan consumer.Messages {
-	out := make(chan consumer.Messages)
-	go func() {
-		defer close(out)
-
-		log.WithFields(log.Fields{"consumer": id}).Infof("Starting consumer")
-
-		// prometheus metrics
-		mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
-
-		// reading from message queue
-		msgs, err := qc.Consume(id)
-		if err != nil {
-			log.Error(err)
-		}
-
-		// loop to dispatch the messages read to the channel consummed from storage workers
-		for m := range msgs {
-			select {
-
-			case out <- m: // put messages consumed into the out chan
-				mtrs.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
-
-			case <-ctx.Done(): // When main routine cancel
-
-				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping consumer")
-				mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
-
-				// closes the consumer queue and connection
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					qc.Close() // TODO: Close the consumer connection not the mq connection
-					wg.Done()
-				}()
-				wg.Wait()
-
-				return // go out of the for loop
-			}
-		}
-	}()
-
-	return out
-}
-
-// This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st *repository.MessageRepository) <-chan repository.Results {
-	out := make(chan repository.Results)
-	go func() {
-		defer close(out)
-
-		log.WithFields(log.Fields{"worker": id}).Infof("Starting storage worker")
-
-		// prometheus metrics
-		mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Inc()
-
-		// loop to dispatch the messages read to the channel consummed from storage workers
-		for {
-			select {
-
-			case m := <-chanMsgs:
-				startTime := time.Now()
-
-				r := st.Store(m) // proccess and storage message into db
-				r.By = id        // fill who execute it
-				out <- r
-
-				mtrs.StorageWorkerMessages.With(prometheus.Labels{"name": id}).Inc()
-
-				mtrs.StorageWorkerProcessingDuration.With(
-					prometheus.Labels{"name": id},
-				).Observe(time.Since(startTime).Seconds())
-
-			case <-ctx.Done(): // When main routine cancel
-
-				log.WithFields(log.Fields{"worker": id}).Warnf("Stoping storage worker")
-				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
-
-				return // go out of the for loop
-
-			}
-		}
-	}()
-
-	return out
-}
-
-// this function merge all the channels data receive as slice of channels and return a merged channel with the data
-// bassically convert (...<-chan consumer.Messages) --> (<-chan consumer.Messages)
-func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
-	var wg sync.WaitGroup
-	out := make(chan consumer.Messages)
-
-	// internal function to merge channels in only one
-	multiplex := func(channel <-chan consumer.Messages) {
-		defer wg.Done()
-		for ch := range channel {
-			select {
-			case out <- ch:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
-
-	// one routine per every channel in channels arg
-	wg.Add(len(channels))
-	for _, ch := range channels {
-		go multiplex(ch)
-	}
-
-	// waiting until fished every go multiplex(ch)
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	return out
-}
-
-// mergeResultsChan merge all the channels of storer.Results in only one
-// bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
-func mergeResultsChans(ctx context.Context, channels ...<-chan repository.Results) <-chan repository.Results {
-	var wg sync.WaitGroup
-	out := make(chan repository.Results)
-
-	// internal function to merge channels in only one
-	multiplex := func(channel <-chan repository.Results) {
-		defer wg.Done()
-		for ch := range channel {
-			select {
-			case out <- ch:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
-
-	// one routine per every channel in channels arg
-	wg.Add(len(channels))
-	for _, ch := range channels {
-		go multiplex(ch)
-	}
-
-	// waiting until fished every go multiplex(ch)
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	return out
 }
 
 // HomePage render the home page website

@@ -1,18 +1,19 @@
-package rmq
+package queue
 
 import (
 	"sync"
 	"time"
 
-	"github.com/christiangda/mq-to-db/internal/consumer"
+	"github.com/christiangda/mq-to-db/internal/model"
 	"github.com/streadway/amqp"
 )
 
-// RMQ is a RabbitMQ consumer configuration
+// RabbitMQ is a RabbitMQ consumer configuration
 // Implement Consumer.Consumer interface
-type RMQ struct {
-	conn    *amqp.Connection
-	channel *amqp.Channel
+type RabbitMQ struct {
+	conn        *amqp.Connection
+	channel     *amqp.Channel
+	notifyClose chan *amqp.Error
 
 	name string
 	uri  string
@@ -40,14 +41,13 @@ type RMQ struct {
 }
 
 // New create a new rabbitmq consumer with implements consumer.Consumer interface
-func New(c *consumer.Config) (*RMQ, error) {
-
+func NewRabbitMQ(c *Config) (*RabbitMQ, error) {
 	uri, err := c.GetURI()
 	if err != nil {
 		return nil, err
 	}
 
-	return &RMQ{
+	return &RabbitMQ{
 		name:               c.Name,
 		uri:                uri,
 		requestedHeartbeat: c.RequestedHeartbeat,
@@ -90,35 +90,35 @@ func New(c *consumer.Config) (*RMQ, error) {
 }
 
 // Connect to RabbitMQ server and channel
-func (c *RMQ) Connect() error {
-
+func (rmq *RabbitMQ) Connect() error {
 	amqpConfig := amqp.Config{}
 
-	amqpConfig.Heartbeat = c.requestedHeartbeat
-	if c.virtualHost != "" {
-		amqpConfig.Vhost = c.virtualHost
+	amqpConfig.Heartbeat = rmq.requestedHeartbeat
+	if rmq.virtualHost != "" {
+		amqpConfig.Vhost = rmq.virtualHost
 	}
 
 	conn, err := amqp.DialConfig(
-		c.uri,
+		rmq.uri,
 		amqpConfig,
 	)
 	if err != nil {
 		return err
 	}
-	//defer conn.Close()
-	c.conn = conn
 
-	ch, err := c.conn.Channel()
+	rmq.conn = conn
+	rmq.notifyClose = conn.NotifyClose(make(chan *amqp.Error))
+
+	ch, err := rmq.conn.Channel()
 	if err != nil {
 		return err
 	}
-	//defer ch.Close()
-	c.channel = ch
+	// defer ch.Close()
+	rmq.channel = ch
 
 	err = ch.Qos(
-		c.queue.PrefetchCount,
-		c.queue.PrefetchSize,
+		rmq.queue.PrefetchCount,
+		rmq.queue.PrefetchSize,
 		false, // global
 	)
 
@@ -126,35 +126,35 @@ func (c *RMQ) Connect() error {
 		return err
 	}
 
-	err = c.channel.ExchangeDeclare(
-		c.exchange.name,
-		c.exchange.kind,
-		c.exchange.durable,
-		c.exchange.autoDelete,
+	err = rmq.channel.ExchangeDeclare(
+		rmq.exchange.name,
+		rmq.exchange.kind,
+		rmq.exchange.durable,
+		rmq.exchange.autoDelete,
 		false, // internal
 		false, // no-wait
-		c.exchange.args,
+		rmq.exchange.args,
 	)
 	if err != nil {
 		return err
 	}
 
-	q, err := c.channel.QueueDeclare(
-		c.queue.name,
-		c.queue.durable,
-		c.queue.autoDelete,
-		c.queue.exclusive,
+	q, err := rmq.channel.QueueDeclare(
+		rmq.queue.name,
+		rmq.queue.durable,
+		rmq.queue.autoDelete,
+		rmq.queue.exclusive,
 		false, // no-wait
-		c.queue.args,
+		rmq.queue.args,
 	)
 	if err != nil {
 		return err
 	}
 
-	err = c.channel.QueueBind(
+	err = rmq.channel.QueueBind(
 		q.Name,
-		c.queue.routingKey,
-		c.exchange.name,
+		rmq.queue.routingKey,
+		rmq.exchange.name,
 		false, // no-wait
 		nil,
 	)
@@ -166,17 +166,16 @@ func (c *RMQ) Connect() error {
 }
 
 // Consume messages from the queue channel
-func (c *RMQ) Consume(id string) (<-chan consumer.Messages, error) {
-
+func (rmq *RabbitMQ) Consume(id string) (<-chan model.Messages, error) {
 	// Register a consumer
-	msgs, err := c.channel.Consume(
-		c.queue.name,
-		id,                // consumer id
-		c.queue.autoACK,   // auto-ack
-		c.queue.exclusive, // exclusive
-		false,             // no-local
-		false,             // no-wait
-		nil,               // args
+	msgs, err := rmq.channel.Consume(
+		rmq.queue.name,
+		id,                  // consumer id
+		rmq.queue.autoACK,   // auto-ack
+		rmq.queue.exclusive, // exclusive
+		false,               // no-local
+		false,               // no-wait
+		nil,                 // args
 	)
 	if err != nil {
 		return nil, err
@@ -186,20 +185,21 @@ func (c *RMQ) Consume(id string) (<-chan consumer.Messages, error) {
 	// This channels is used to be filled by messages comming from
 	// the queue system
 	// This is part of "producer-consume queue pattern"
-	out := make(chan consumer.Messages, len(msgs)+1)
+	out := make(chan model.Messages, len(msgs)+1)
 
 	// NOTE: This is necessary to consume the original channel without blocking it
 	wg.Add(1)
 	go func() {
 		for d := range msgs {
-			out <- consumer.Messages{
+			out <- model.Messages{
 				MessageID:    d.MessageId,
-				Priority:     consumer.Priority(d.Priority),
+				Priority:     model.Priority(d.Priority),
 				Timestamp:    d.Timestamp,
 				ContentType:  d.ContentType,
 				Acknowledger: &Acknowledger{d.Acknowledger, d.DeliveryTag},
 				Payload:      d.Body,
 			}
+			d.Ack(false)
 		}
 		close(out)
 		wg.Done()
@@ -209,11 +209,11 @@ func (c *RMQ) Consume(id string) (<-chan consumer.Messages, error) {
 }
 
 // Close the channel connection
-func (c *RMQ) Close() error {
-	if err := c.channel.Close(); err != nil {
+func (rmq *RabbitMQ) Close() error {
+	if err := rmq.channel.Close(); err != nil {
 		return err
 	}
-	if err := c.conn.Close(); err != nil {
+	if err := rmq.conn.Close(); err != nil {
 		return err
 	}
 	return nil

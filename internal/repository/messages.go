@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/metrics"
+	"github.com/christiangda/mq-to-db/internal/model"
 	log "github.com/sirupsen/logrus"
 )
 
-//go:generate go run github.com/golang/mock/mockgen@v1.6.0 -package=mocks -destination=../../mocks/repository/messages_mocks.go -source=messages.go SQLService
+//go:generate go run github.com/golang/mock/mockgen@v1.6.0 -package=mocks -destination=../../mocks/repository/messages_mocks.go -source=messages.go StorageService
 
-// SQLService is the interface to consume SQL service methods
-type SQLService interface {
+// StorageService is the interface to consume SQL service methods
+type StorageService interface {
 	ExecContext(ctx context.Context, q string) (sql.Result, error)
 }
 
@@ -43,12 +43,12 @@ func (r *Results) ToJSON() string {
 // MessageRepository represents a message repository
 type MessageRepository struct {
 	ctx  context.Context
-	sql  SQLService
+	sql  StorageService
 	mtrs *metrics.Metrics
 }
 
 // NewMessageRepository return a new Message Repository instance
-func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Metrics) *MessageRepository {
+func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics.Metrics) *MessageRepository {
 	return &MessageRepository{
 		ctx:  ctx,
 		sql:  sql,
@@ -57,7 +57,7 @@ func NewMessageRepository(ctx context.Context, sql SQLService, mtrs *metrics.Met
 }
 
 // Store stores a message in the database
-func (mr *MessageRepository) Store(msg consumer.Messages) Results {
+func (mr *MessageRepository) Store(msg model.Messages) Results {
 	log.Debugf("Processing message: %s", msg.Payload)
 
 	mr.mtrs.RepositoryMessagesTotal.Inc()
