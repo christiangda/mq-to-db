@@ -20,9 +20,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
+	"github.com/christiangda/mq-to-db/internal/broker"
+	"github.com/christiangda/mq-to-db/internal/consumer"
 	"github.com/christiangda/mq-to-db/internal/dispatcher"
 	"github.com/christiangda/mq-to-db/internal/metrics"
-	"github.com/christiangda/mq-to-db/internal/queue"
 	"github.com/christiangda/mq-to-db/internal/repository"
 	"github.com/christiangda/mq-to-db/internal/storage"
 
@@ -192,7 +193,7 @@ func main() {
 	}
 
 	log.Info("Using rabbitmq consumer")
-	qc, err := queue.NewRabbitMQ(&queue.Config{
+	broker, err := broker.NewRabbitMQ(&broker.Config{
 		Name:               conf.Application.Name,
 		Address:            conf.Consumer.Address,
 		Port:               conf.Consumer.Port,
@@ -200,9 +201,8 @@ func main() {
 		Username:           conf.Consumer.Username,
 		Password:           conf.Consumer.Password,
 		VirtualHost:        conf.Consumer.VirtualHost,
-		Queue: queue.Queue{
+		Queue: broker.Queue{
 			Name:          conf.Consumer.Queue.Name,
-			RoutingKey:    conf.Consumer.Queue.RoutingKey,
 			Durable:       conf.Consumer.Queue.Durable,
 			AutoDelete:    conf.Consumer.Queue.AutoDelete,
 			Exclusive:     conf.Consumer.Queue.Exclusive,
@@ -211,7 +211,7 @@ func main() {
 			PrefetchSize:  conf.Consumer.Queue.PrefetchSize,
 			Args:          conf.Consumer.Queue.Args,
 		},
-		Exchange: queue.Exchange{
+		Exchange: broker.Exchange{
 			Name:       conf.Consumer.Exchange.Name,
 			Kind:       conf.Consumer.Exchange.Kind,
 			Durable:    conf.Consumer.Exchange.Durable,
@@ -223,19 +223,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Try to connect to queue consumer
-	log.Infof("Connecting to queue")
-	if err := qc.Connect(); err != nil {
-		log.WithFields(log.Fields{
-			"server":   conf.Consumer.Address,
-			"port":     conf.Consumer.Port,
-			"queue":    conf.Consumer.Queue.Name,
-			"exchange": conf.Consumer.Exchange.Name,
-		}).Fatal("Error connecting to queue server")
-	}
-
 	// repository used to store a consumer.Message into the database
-	msgsRepo := repository.NewMessageRepository(appCtx, dbService, mtrs)
+	msgsRepo := repository.NewMessageRepository(appCtx, dbService)
+	msgConsummer := consumer.NewMessageConsumer(appCtx, broker)
 
 	// Business logic
 	distpatcherConfig := dispatcher.Config{
@@ -245,21 +235,21 @@ func main() {
 		StorageWorkers:      conf.Dispatcher.StorageWorkers,
 	}
 
-	consumer := dispatcher.NewConsumer(appCtx, qc, distpatcherConfig)
+	consumer := dispatcher.NewConsumer(appCtx, msgConsummer, distpatcherConfig)
 	messages := consumer.Consume()
 
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case msg := <-messages:
-	// 			log.Debugf("Received message: %s", msg.Payload)
-	// 			msg.Ack()
+	go func() {
+		for {
+			select {
+			case msg := <-messages:
+				log.Debugf("Received message: %s", msg.Payload)
+				msg.Ack(false)
 
-	// 		case <-appCtx.Done():
-	// 			log.Info("Application context done")
-	// 		}
-	// 	}
-	// }()
+			case <-appCtx.Done():
+				log.Info("Application context done")
+			}
+		}
+	}()
 
 	storer := dispatcher.NewStorer(appCtx, msgsRepo, distpatcherConfig)
 	chanResults := storer.Store(messages)
@@ -340,7 +330,7 @@ func main() {
 
 	// Closes sockets
 	log.Warn("Closing Consumer connections")
-	if err := qc.Close(); err != nil {
+	if err := broker.Close(); err != nil {
 		log.Warnf("Consumer connections was closed previously: %s", err)
 	}
 	log.Warn("Consumer connections closed")

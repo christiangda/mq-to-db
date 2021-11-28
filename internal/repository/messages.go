@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	"github.com/christiangda/mq-to-db/internal/messages"
-	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -57,7 +56,7 @@ type MessageRepository struct {
 }
 
 // NewMessageRepository return a new Message Repository instance
-func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics.Metrics) *MessageRepository {
+func NewMessageRepository(ctx context.Context, sql StorageService) *MessageRepository {
 	out := &MessageRepository{
 		ctx: ctx,
 		sql: sql,
@@ -199,7 +198,7 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 	}
 	log.Debugf("SQL Execution return: %v", rows)
 
-	if err := msg.Ack(); err != nil {
+	if err := msg.Ack(false); err != nil {
 		if err = msg.Reject(false); err != nil {
 			mr.RepositoryMessagesRejectedTotal.Inc()
 			return Results{

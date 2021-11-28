@@ -11,32 +11,36 @@ import (
 )
 
 // this interface is used to consume the methods from the queue system
-type Queue interface {
+type ConsumerService interface {
 	Connect() error
-	Consume(id string) (<-chan model.Messages, error)
+	Start() error
+	Consume(ctx context.Context, id string) (<-chan model.Messages, error)
 	Close() error
 }
 
 // Consumer represent the consumer of the queue system
 type Consumer struct {
-	ctx   context.Context
-	queue Queue
-	conf  Config
+	ctx      context.Context
+	consumer ConsumerService
+	conf     Config
+	messages []<-chan model.Messages
 
 	// Consumers
-	ConsumerRunning  *prometheus.GaugeVec
-	ConsumerMessages *prometheus.CounterVec
+	DispatcherConsumerRunning  *prometheus.GaugeVec
+	DispatcherConsumerMessages *prometheus.CounterVec
 }
 
 // NewConsumer create a new consumer
-func NewConsumer(ctx context.Context, queue Queue, conf Config) *Consumer {
+func NewConsumer(ctx context.Context, consumer ConsumerService, conf Config) *Consumer {
 	return &Consumer{
-		ctx:   ctx,
-		queue: queue,
-		conf:  conf,
+		ctx:      ctx,
+		consumer: consumer,
+		conf:     conf,
+		messages: make([]<-chan model.Messages, conf.ConsumerConcurrency),
 
-		ConsumerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		DispatcherConsumerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "mq-to-db",
+			Subsystem: "dispatcher",
 			Name:      "consumer_running",
 			Help:      "Number of consumer running",
 		},
@@ -44,10 +48,11 @@ func NewConsumer(ctx context.Context, queue Queue, conf Config) *Consumer {
 				// Consumer name
 				"name",
 			}),
-		ConsumerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
+		DispatcherConsumerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "mq-to-db",
+			Subsystem: "dispatcher",
 			Name:      "consumer_messages_total",
-			Help:      "Number of messages consumed my consumers.",
+			Help:      "Number of messages consumed",
 		},
 			[]string{
 				// Consumer name
@@ -57,31 +62,28 @@ func NewConsumer(ctx context.Context, queue Queue, conf Config) *Consumer {
 }
 
 func (c *Consumer) Consume() <-chan model.Messages {
-	// Logic of channels for consumer and for storage
-	// it is a go pipeline model https://blog.golang.org/pipelines
-	// ********************************************
+	if err := c.consumer.Connect(); err != nil {
+		log.Errorf("Error connecting to queue system: %s", err)
+	}
 
-	// slice of consumers
-	// where the consumers will put the chan of consumer.Messages
-	// this slice of channels (consumer.Messages) is used to comunicate consumers and storage workers
-	// but first every consumer generate a <-chan consumer.Messages witch need to me merge in only
-	// one channel before be ready to consume
-	sliceChanMessages := make([]<-chan model.Messages, c.conf.ConsumerConcurrency)
+	if err := c.consumer.Start(); err != nil {
+		log.Errorf("Error starting consumer: %s", err)
+	}
 
 	// Start Consumers
 	log.WithFields(log.Fields{"concurrency": c.conf.ConsumerConcurrency}).Infof("Starting consumers")
 	for i := 0; i < c.conf.ConsumerConcurrency; i++ {
 		// ids for consumers
 		id := fmt.Sprintf("%s-%s-consumer-%d", c.conf.HostName, c.conf.ApplicationName, i)
-		sliceChanMessages[i] = c.messageConsumer(c.ctx, id)
+		c.messages[i] = c.Consumer(c.ctx, id)
 	}
 
 	// Merge all channels from consumers in only one channel of type <-chan consumer.Messages
-	return c.mergeMessagesChans(c.ctx, sliceChanMessages...)
+	return c.mergeMessages(c.ctx, c.messages...)
 }
 
 // messageConsumer consume messages from queue system and return the messages as a channel of them
-func (c *Consumer) messageConsumer(ctx context.Context, id string) <-chan model.Messages {
+func (c *Consumer) Consumer(ctx context.Context, id string) <-chan model.Messages {
 	out := make(chan model.Messages)
 	go func() {
 		defer close(out)
@@ -89,10 +91,10 @@ func (c *Consumer) messageConsumer(ctx context.Context, id string) <-chan model.
 		log.WithFields(log.Fields{"consumer": id}).Infof("Starting consumer")
 
 		// prometheus metrics
-		c.ConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
+		c.DispatcherConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// reading from message queue
-		msgs, err := c.queue.Consume(id)
+		msgs, err := c.consumer.Consume(ctx, id)
 		if err != nil {
 			log.Error(err)
 		}
@@ -102,18 +104,18 @@ func (c *Consumer) messageConsumer(ctx context.Context, id string) <-chan model.
 			select {
 
 			case out <- m: // put messages consumed into the out chan
-				c.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
+				c.DispatcherConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
 
 			case <-ctx.Done(): // When main routine cancel
 
-				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping consumer")
-				c.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
+				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping distpatcher consumer")
+				c.DispatcherConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				// closes the consumer queue and connection
 				var wg sync.WaitGroup
 				wg.Add(1)
 				go func() {
-					c.queue.Close() // TODO: Close the consumer connection not the mq connection
+					c.consumer.Close() // TODO: Close the consumer connection not the mq connection
 					wg.Done()
 				}()
 				wg.Wait()
@@ -128,7 +130,7 @@ func (c *Consumer) messageConsumer(ctx context.Context, id string) <-chan model.
 
 // this function merge all the channels data receive as slice of channels and return a merged channel with the data
 // bassically convert (...<-chan model.Messages) --> (<-chan model.Messages)
-func (c *Consumer) mergeMessagesChans(ctx context.Context, channels ...<-chan model.Messages) <-chan model.Messages {
+func (c *Consumer) mergeMessages(ctx context.Context, channels ...<-chan model.Messages) <-chan model.Messages {
 	var wg sync.WaitGroup
 	out := make(chan model.Messages)
 
