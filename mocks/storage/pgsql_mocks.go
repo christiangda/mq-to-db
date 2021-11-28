@@ -3,3 +3,111 @@
 
 // Package mocks is a generated GoMock package.
 package mocks
+
+import (
+	context "context"
+	sql "database/sql"
+	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+)
+
+// MockSQLService is a mock of SQLService interface.
+type MockSQLService struct {
+	ctrl     *gomock.Controller
+	recorder *MockSQLServiceMockRecorder
+}
+
+// MockSQLServiceMockRecorder is the mock recorder for MockSQLService.
+type MockSQLServiceMockRecorder struct {
+	mock *MockSQLService
+}
+
+// NewMockSQLService creates a new mock instance.
+func NewMockSQLService(ctrl *gomock.Controller) *MockSQLService {
+	mock := &MockSQLService{ctrl: ctrl}
+	mock.recorder = &MockSQLServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSQLService) EXPECT() *MockSQLServiceMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockSQLService) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockSQLServiceMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSQLService)(nil).Close))
+}
+
+// Conn mocks base method.
+func (m *MockSQLService) Conn(ctx context.Context) (*sql.Conn, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Conn", ctx)
+	ret0, _ := ret[0].(*sql.Conn)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Conn indicates an expected call of Conn.
+func (mr *MockSQLServiceMockRecorder) Conn(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Conn", reflect.TypeOf((*MockSQLService)(nil).Conn), ctx)
+}
+
+// ExecContext mocks base method.
+func (m *MockSQLService) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, query}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ExecContext", varargs...)
+	ret0, _ := ret[0].(sql.Result)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecContext indicates an expected call of ExecContext.
+func (mr *MockSQLServiceMockRecorder) ExecContext(ctx, query interface{}, args ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, query}, args...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecContext", reflect.TypeOf((*MockSQLService)(nil).ExecContext), varargs...)
+}
+
+// PingContext mocks base method.
+func (m *MockSQLService) PingContext(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PingContext", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PingContext indicates an expected call of PingContext.
+func (mr *MockSQLServiceMockRecorder) PingContext(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockSQLService)(nil).PingContext), ctx)
+}
+
+// Stats mocks base method.
+func (m *MockSQLService) Stats() sql.DBStats {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stats")
+	ret0, _ := ret[0].(sql.DBStats)
+	return ret0
+}
+
+// Stats indicates an expected call of Stats.
+func (mr *MockSQLServiceMockRecorder) Stats() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockSQLService)(nil).Stats))
+}

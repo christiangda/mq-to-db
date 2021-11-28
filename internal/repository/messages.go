@@ -64,49 +64,57 @@ func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics
 
 		RepositoryMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_messages_total",
+			Subsystem: "storer",
+			Name:      "messages_total",
 			Help:      "Number of messages processed by storer.",
 		},
 		),
 		RepositoryMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_messages_errors_total",
+			Subsystem: "storer",
+			Name:      "messages_errors_total",
 			Help:      "Number of messages with errors processed by storer.",
 		},
 		),
 		RepositorySQLMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_sql_messages_total",
+			Subsystem: "storer",
+			Name:      "sql_messages_total",
 			Help:      "Number of sql messages processed by storer.",
 		},
 		),
 		RepositorySQLMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_sql_messages_errors_total",
+			Subsystem: "storer",
+			Name:      "sql_messages_errors_total",
 			Help:      "Number of sql messages with errors processed by storer.",
 		},
 		),
 		RepositorySQLMessagesToDBTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_sql_messages_to_db_total",
+			Subsystem: "storer",
+			Name:      "sql_messages_to_db_total",
 			Help:      "Number of sql messages sent to database by storer.",
 		},
 		),
 		RepositorySQLMessagesToDBErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_sql_messages_to_db_errors_total",
+			Subsystem: "storer",
+			Name:      "sql_messages_to_db_errors_total",
 			Help:      "Number of sql messages with errors sent to database by storer.",
 		},
 		),
 		RepositoryMessagesAckTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_messages_ack_total",
+			Subsystem: "storer",
+			Name:      "messages_ack_total",
 			Help:      "Number of messages ack into mq system.",
 		},
 		),
 		RepositoryMessagesRejectedTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storer_messages_rejected_total",
+			Subsystem: "storer",
+			Name:      "messages_rejected_total",
 			Help:      "Number of messages rejected into mq system.",
 		},
 		),
@@ -126,20 +134,17 @@ func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics
 
 // Store stores a message in the database
 func (mr *MessageRepository) Store(msg model.Messages) Results {
-	log.Debugf("Processing message: %s", msg.Payload)
+	log.Debugf("Processing message: %+v", msg)
 
 	mr.RepositoryMessagesTotal.Inc()
 
 	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
 	if err != nil {
-
 		mr.RepositoryMessagesErrorsTotal.Inc()
 		mr.RepositorySQLMessagesErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
-
 			mr.RepositoryMessagesRejectedTotal.Inc()
-
 			return Results{
 				Error:   err,
 				Content: msg.MessageID,
@@ -158,14 +163,11 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 
 	result, err := mr.sql.ExecContext(mr.ctx, sqlm.Content.Sentence)
 	if err != nil {
-
 		mr.RepositoryMessagesErrorsTotal.Inc()
 		mr.RepositorySQLMessagesToDBErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
-
 			mr.RepositoryMessagesRejectedTotal.Inc()
-
 			return Results{
 				Error:   err,
 				Content: msg.MessageID,
@@ -184,9 +186,7 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err = msg.Reject(false); err != nil {
-
 			mr.RepositoryMessagesRejectedTotal.Inc()
-
 			return Results{
 				Error:   err,
 				Content: msg.MessageID,
@@ -203,9 +203,7 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 
 	if err := msg.Ack(); err != nil {
 		if err = msg.Reject(false); err != nil {
-
 			mr.RepositoryMessagesRejectedTotal.Inc()
-
 			return Results{
 				Error:   err,
 				Content: msg.MessageID,

@@ -3,9 +3,10 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -13,19 +14,17 @@ import (
 
 //go:generate go run github.com/golang/mock/mockgen@v1.6.0 -package=mocks -destination=../../mocks/storage/pgsql_mocks.go -source=pgsql.go SQLService
 // Store interface is used to consume methods from sql.db
-// type SQLService interface {
-// 	Conn(ctx context.Context) (*sql.Conn, error)
-// 	PingContext(ctx context.Context) error
-// 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-// 	Stats() sql.DBStats
-// 	Close() error
-// }
+type SQLService interface {
+	Conn(ctx context.Context) (*sql.Conn, error)
+	PingContext(ctx context.Context) error
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	Stats() sql.DBStats
+	Close() error
+}
 
 // PGSQL is a implementation go storage.Store interface
 type PGSQL struct {
-	pool *sql.DB
-	conn *sql.Conn
-
+	db              SQLService
 	maxPingTimeOut  time.Duration
 	maxQueryTimeOut time.Duration
 
@@ -38,53 +37,38 @@ type PGSQL struct {
 
 // New return
 // func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
-func NewPGSQL(c *Config) (*PGSQL, error) {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Address,
-		c.Port,
-		c.Username,
-		c.Password,
-		c.Database,
-		c.SSLMode,
-	)
-
-	pool, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	// defer pool.Close()
-
-	pool.SetConnMaxLifetime(c.ConnMaxLifetime)
-	pool.SetMaxIdleConns(c.MaxIdleConns)
-	pool.SetMaxOpenConns(c.MaxOpenConns)
-
+func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
 	out := &PGSQL{
-		pool:            pool,
+		db:              db,
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
 
-		DBMetrics: NewDBMetricsCollector("mq_to_db", "db", pool),
+		DBMetrics: NewDBMetricsCollector("mq_to_db", "db", db),
 		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_ping_total",
+			Subsystem: "storage",
+			Name:      "ping_total",
 			Help:      "Number of ping executed by storage.",
 		},
 		),
 		StoragePingTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_ping_timeout_total",
+			Subsystem: "storage",
+			Name:      "ping_timeout_total",
 			Help:      "Number of ping with timeouts executed by storage.",
 		},
 		),
 		StorageExecTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_exec_total",
+			Subsystem: "storage",
+			Name:      "exec_total",
 			Help:      "Number of exec executed by storage.",
 		},
 		),
 		StorageExecTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_exec_timeout_total",
+			Subsystem: "storage",
+			Name:      "exec_timeout_total",
 			Help:      "Number of exec with timeouts executed by storage.",
 		},
 		),
@@ -99,40 +83,24 @@ func NewPGSQL(c *Config) (*PGSQL, error) {
 	return out, nil
 }
 
-// Connect returns a single connection by either opening a new connection
-// or returning an existing connection from the connection pool.
-func (c *PGSQL) Connect(ctx context.Context) error {
-	conn, err := c.pool.Conn(ctx)
-	c.conn = conn
-	// defer conn.Close()
-
-	return err
-}
-
-// Ping verifies a connection to the database is still alive,
-// establishing a connection if necessary.
-func (c *PGSQL) Ping(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
-	defer cancel()
-
-	c.StoragePingTotal.Inc()
-	err := c.pool.PingContext(ctx)
-
-	if ctx.Err() == context.DeadlineExceeded {
-		c.StoragePingTimeOutTotal.Inc()
-		log.Warnf("Ping time out (%v) ", c.maxQueryTimeOut)
-		err = ctx.Err()
-	}
-	return err
-}
-
 // ExecContext executes a query without returning any rows.
 func (c *PGSQL) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.maxQueryTimeOut)
 	defer cancel()
 
+	conn, err := c.getConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if e := conn.Close(); e != nil {
+			log.Errorf("Close failed, error: %v", e)
+		}
+	}()
+
 	c.StorageExecTotal.Inc()
-	res, err := c.pool.ExecContext(ctx, q)
+	res, err := conn.ExecContext(ctx, q)
 
 	if ctx.Err() == context.DeadlineExceeded {
 		c.StorageExecTimeOutTotal.Inc()
@@ -143,21 +111,53 @@ func (c *PGSQL) ExecContext(ctx context.Context, q string) (sql.Result, error) {
 	return res, err
 }
 
-// Close closes the database and prevents new queries from starting.
-func (c *PGSQL) Close() error {
-	return c.pool.Close()
-}
-
 // Stats return the database metrics statistics
 func (c *PGSQL) Stats() sql.DBStats {
-	return c.pool.Stats()
+	return c.db.Stats()
 }
 
-// func (c *PGSQL) MetricsHandler() http.Handler {
-// 	return promhttp.HandlerFor(
-// 		prometheus.DefaultGatherer,
-// 		promhttp.HandlerOpts{
-// 			EnableOpenMetrics: true,
-// 		},
-// 	)
-// }
+// getConn returns a single connection by either opening a new connection
+// reference: https://stackoverflow.com/questions/67176979/bad-connection-response-to-long-running-mssql-transaction-in-golang
+func (c *PGSQL) getConn(ctx context.Context) (*sql.Conn, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.maxPingTimeOut)
+	defer cancel()
+
+	c.StoragePingTotal.Inc()
+	err := c.db.PingContext(ctx)
+	if ctx.Err() == context.DeadlineExceeded {
+		c.StoragePingTimeOutTotal.Inc()
+		log.Warnf("Ping time out (%v) ", c.maxQueryTimeOut)
+		return nil, ctx.Err()
+	} else if err != nil {
+		return nil, err
+	}
+
+	repeater := backoff.WithContext(backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 10), ctx)
+
+	var conn *sql.Conn
+	if err := backoff.Retry(func() error {
+		// Attempt to get the connection to the database
+		var err error
+		if conn, err = c.db.Conn(ctx); err != nil {
+
+			// We failed to get the connection; if we have a login error, an EOF or handshake
+			// failure then we'll attempt the connection again later so just return it and let
+			// the backoff code handle it
+			log.Warnf("Database Connection failed, error: %v", err)
+			if strings.Contains(err.Error(), "EOF") {
+				return err
+			} else if strings.Contains(err.Error(), "TLS Handshake failed") {
+				return err
+			}
+
+			// Otherwise, we can't recover from the error so return it
+			return backoff.Permanent(err)
+		}
+
+		return nil
+	}, repeater); err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}

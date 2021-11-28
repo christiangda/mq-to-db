@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -177,20 +178,15 @@ func main() {
 
 	// Select the storage
 	log.Info("Using postgresql database")
-	db, err := storage.NewPGSQL(&storage.Config{
-		Address:  conf.Database.Address,
-		Port:     conf.Database.Port,
-		Username: conf.Database.Username,
-		Password: conf.Database.Password,
-		Database: conf.Database.Database,
-		SSLMode:  conf.Database.SSLMode,
+	db, err := getPostgreSQLDB(conf)
+	if err != nil {
+		log.Fatalf("Error connecting to database: %s", err)
+	}
 
+	dbService, err := storage.NewPGSQL(&storage.Config{
 		MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
 		MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
-		ConnMaxLifetime: conf.Database.ConnMaxLifetime,
-		MaxIdleConns:    conf.Database.MaxIdleConns,
-		MaxOpenConns:    conf.Database.MaxOpenConns,
-	})
+	}, db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -244,13 +240,13 @@ func main() {
 	}
 
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
-	log.Infof("Connecting to database")
-	if err := db.Connect(appCtx); err != nil {
-		log.WithFields(log.Fields{
-			"server": conf.Database.Address,
-			"port":   conf.Database.Port,
-		}).Fatal("Error connecting to database server")
-	}
+	// log.Infof("Connecting to database")
+	// if err := dbService.Connect(appCtx); err != nil {
+	// 	log.WithFields(log.Fields{
+	// 		"server": conf.Database.Address,
+	// 		"port":   conf.Database.Port,
+	// 	}).Fatalf("Error connecting to database server, err: %s", err)
+	// }
 
 	// Try to connect to queue consumer
 	log.Infof("Connecting to queue")
@@ -264,7 +260,7 @@ func main() {
 	}
 
 	// repository used to store a consumer.Message into the database
-	msgsRepo := repository.NewMessageRepository(appCtx, db, mtrs)
+	msgsRepo := repository.NewMessageRepository(appCtx, dbService, mtrs)
 
 	// Business logic
 	distpatcherConfig := dispatcher.Config{
@@ -465,4 +461,26 @@ func metricsHandler() http.Handler {
 			EnableOpenMetrics: true,
 		},
 	)
+}
+
+func getPostgreSQLDB(conf config.Config) (*sql.DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		conf.Database.Address,
+		conf.Database.Port,
+		conf.Database.Username,
+		conf.Database.Password,
+		conf.Database.Database,
+		conf.Database.SSLMode,
+	)
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetConnMaxLifetime(conf.Database.ConnMaxLifetime)
+	db.SetMaxIdleConns(conf.Database.MaxIdleConns)
+	db.SetMaxOpenConns(conf.Database.MaxOpenConns)
+
+	return db, nil
 }

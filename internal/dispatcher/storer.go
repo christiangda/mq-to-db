@@ -12,13 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Repository interface {
+type RepositoryMessage interface {
 	Store(m model.Messages) repository.Results
 }
 
 type Storer struct {
 	ctx  context.Context
-	repo Repository
+	repo RepositoryMessage
 	conf Config
 
 	StorageWorkerRunning            *prometheus.GaugeVec
@@ -26,7 +26,7 @@ type Storer struct {
 	StorageWorkerProcessingDuration *prometheus.HistogramVec
 }
 
-func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
+func NewStorer(ctx context.Context, repo RepositoryMessage, conf Config) *Storer {
 	return &Storer{
 		ctx:  ctx,
 		repo: repo,
@@ -34,7 +34,8 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 
 		StorageWorkerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_worker_running",
+			Subsystem: "storage",
+			Name:      "worker_running",
 			Help:      "Number of Storage Workers running",
 		},
 			[]string{
@@ -43,7 +44,8 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 			}),
 		StorageWorkerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_worker_messages_total",
+			Subsystem: "storage",
+			Name:      "worker_messages_total",
 			Help:      "Number of messages consumed my storage_workers.",
 		},
 			[]string{
@@ -52,7 +54,8 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 			}),
 		StorageWorkerProcessingDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "mq_to_db",
-			Name:      "storage_worker_process_duration_seconds",
+			Subsystem: "storage",
+			Name:      "worker_process_duration_seconds",
 			Help:      "Amount of time spent storing messages",
 			Buckets:   []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15}, // Observation buckets
 		},
@@ -113,7 +116,6 @@ func (s *Storer) messageProcessor(ctx context.Context, id string, chanMsgs <-cha
 				s.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				return // go out of the for loop
-
 			}
 		}
 	}()
