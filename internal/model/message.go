@@ -9,6 +9,7 @@ import (
 type Priority uint8
 
 // Acknowledger represents the object in charge of acknowledgement
+// this is used to consume the methods from the broker Acknowledgements system
 type Acknowledger interface {
 	Ack() error
 	Reject(requeue bool) error

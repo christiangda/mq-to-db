@@ -99,10 +99,11 @@ func (s *Storer) messageProcessor(ctx context.Context, id string, chanMsgs <-cha
 
 			case m := <-chanMsgs:
 				startTime := time.Now()
+				log.Tracef("Storing message: %+v", m)
 
-				r := s.repo.Store(m) // proccess and storage message into db
-				r.By = id            // fill who execute it
-				out <- r
+				// r := s.repo.Store(m) // proccess and storage message into db
+				// r.By = id            // fill who execute it
+				// out <- r
 
 				s.StorageWorkerMessages.With(prometheus.Labels{"name": id}).Inc()
 

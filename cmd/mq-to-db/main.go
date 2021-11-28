@@ -200,53 +200,28 @@ func main() {
 		Username:           conf.Consumer.Username,
 		Password:           conf.Consumer.Password,
 		VirtualHost:        conf.Consumer.VirtualHost,
-		Queue: struct {
-			Name          string
-			RoutingKey    string
-			Durable       bool
-			AutoDelete    bool
-			Exclusive     bool
-			AutoACK       bool
-			PrefetchCount int
-			PrefetchSize  int
-			Args          map[string]interface{}
-		}{
-			conf.Consumer.Queue.Name,
-			conf.Consumer.Queue.RoutingKey,
-			conf.Consumer.Queue.Durable,
-			conf.Consumer.Queue.AutoDelete,
-			conf.Consumer.Queue.Exclusive,
-			conf.Consumer.Queue.AutoACK,
-			conf.Consumer.Queue.PrefetchCount,
-			conf.Consumer.Queue.PrefetchSize,
-			conf.Consumer.Queue.Args,
+		Queue: queue.Queue{
+			Name:          conf.Consumer.Queue.Name,
+			RoutingKey:    conf.Consumer.Queue.RoutingKey,
+			Durable:       conf.Consumer.Queue.Durable,
+			AutoDelete:    conf.Consumer.Queue.AutoDelete,
+			Exclusive:     conf.Consumer.Queue.Exclusive,
+			AutoACK:       conf.Consumer.Queue.AutoACK,
+			PrefetchCount: conf.Consumer.Queue.PrefetchCount,
+			PrefetchSize:  conf.Consumer.Queue.PrefetchSize,
+			Args:          conf.Consumer.Queue.Args,
 		},
-		Exchange: struct {
-			Name       string
-			Kind       string
-			Durable    bool
-			AutoDelete bool
-			Args       map[string]interface{}
-		}{
-			conf.Consumer.Exchange.Name,
-			conf.Consumer.Exchange.Kind,
-			conf.Consumer.Exchange.Durable,
-			conf.Consumer.Exchange.AutoDelete,
-			conf.Consumer.Exchange.Args,
+		Exchange: queue.Exchange{
+			Name:       conf.Consumer.Exchange.Name,
+			Kind:       conf.Consumer.Exchange.Kind,
+			Durable:    conf.Consumer.Exchange.Durable,
+			AutoDelete: conf.Consumer.Exchange.AutoDelete,
+			Args:       conf.Consumer.Exchange.Args,
 		},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
-	// log.Infof("Connecting to database")
-	// if err := dbService.Connect(appCtx); err != nil {
-	// 	log.WithFields(log.Fields{
-	// 		"server": conf.Database.Address,
-	// 		"port":   conf.Database.Port,
-	// 	}).Fatalf("Error connecting to database server, err: %s", err)
-	// }
 
 	// Try to connect to queue consumer
 	log.Infof("Connecting to queue")
@@ -271,20 +246,32 @@ func main() {
 	}
 
 	consumer := dispatcher.NewConsumer(appCtx, qc, distpatcherConfig)
-	storer := dispatcher.NewStorer(appCtx, msgsRepo, distpatcherConfig)
+	messages := consumer.Consume()
 
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case msg := <-messages:
+	// 			log.Debugf("Received message: %s", msg.Payload)
+	// 			msg.Ack()
+
+	// 		case <-appCtx.Done():
+	// 			log.Info("Application context done")
+	// 		}
+	// 	}
+	// }()
+
+	storer := dispatcher.NewStorer(appCtx, msgsRepo, distpatcherConfig)
+	chanResults := storer.Store(messages)
+	// Listen result in different routine
 	go func() {
-		chanResults := storer.Store(consumer.Consume())
-		// Listen result in different routine
-		go func() {
-			for r := range chanResults {
-				if r.Error != nil {
-					log.WithFields(log.Fields{
-						"worker": r.By,
-					}).Errorf("%s-%s", r.Reason, r.Error)
-				}
+		for r := range chanResults {
+			if r.Error != nil {
+				log.WithFields(log.Fields{
+					"worker": r.By,
+				}).Errorf("%s-%s", r.Reason, r.Error)
 			}
-		}()
+		}
 	}()
 	// end of Business logic
 

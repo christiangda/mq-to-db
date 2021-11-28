@@ -117,7 +117,7 @@ func (c *DBMetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	defer c.mutex.Unlock()
 
 	dbStats := c.dbsg.Stats()
-	log.Debugf("Database statistics: %+v", dbStats)
+	log.Tracef("Database statistics: %+v", dbStats)
 
 	// Gauges
 	c.maxOpenConn.Set(float64(dbStats.MaxOpenConnections))

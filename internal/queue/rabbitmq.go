@@ -1,10 +1,10 @@
 package queue
 
 import (
-	"sync"
 	"time"
 
 	"github.com/christiangda/mq-to-db/internal/model"
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -98,16 +98,18 @@ func (rmq *RabbitMQ) Connect() error {
 		amqpConfig.Vhost = rmq.virtualHost
 	}
 
-	conn, err := amqp.DialConfig(
-		rmq.uri,
-		amqpConfig,
-	)
-	if err != nil {
-		return err
-	}
+	if rmq.conn == nil || rmq.conn.IsClosed() {
+		conn, err := amqp.DialConfig(
+			rmq.uri,
+			amqpConfig,
+		)
+		if err != nil {
+			return err
+		}
 
-	rmq.conn = conn
-	rmq.notifyClose = conn.NotifyClose(make(chan *amqp.Error))
+		rmq.conn = conn
+		rmq.notifyClose = conn.NotifyClose(make(chan *amqp.Error))
+	}
 
 	ch, err := rmq.conn.Channel()
 	if err != nil {
@@ -181,28 +183,50 @@ func (rmq *RabbitMQ) Consume(id string) (<-chan model.Messages, error) {
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
 	// This channels is used to be filled by messages comming from
 	// the queue system
 	// This is part of "producer-consume queue pattern"
 	out := make(chan model.Messages, len(msgs)+1)
 
 	// NOTE: This is necessary to consume the original channel without blocking it
-	wg.Add(1)
 	go func() {
-		for d := range msgs {
-			out <- model.Messages{
-				MessageID:    d.MessageId,
-				Priority:     model.Priority(d.Priority),
-				Timestamp:    d.Timestamp,
-				ContentType:  d.ContentType,
-				Acknowledger: &Acknowledger{d.Acknowledger, d.DeliveryTag},
-				Payload:      d.Body,
+		defer close(out)
+		for {
+			select {
+			case msg := <-msgs:
+				log.Tracef("Received message: %s, consumer: %s", msg.Body, id)
+
+				out <- model.Messages{
+					MessageID:    msg.MessageId,
+					Priority:     model.Priority(msg.Priority),
+					Timestamp:    msg.Timestamp,
+					ContentType:  msg.ContentType,
+					Acknowledger: &Acknowledger{msg.Acknowledger, msg.DeliveryTag},
+					Payload:      msg.Body,
+				}
+			case err := <-rmq.notifyClose:
+				log.Warnf("RabbitMQ connection close, err: %s", err.Error())
+				time.Sleep(5 * time.Second)
+				// rmq.Connect()
 			}
-			d.Ack(false)
 		}
-		close(out)
-		wg.Done()
+
+		// for msg := range msgs {
+		// 	out <- model.Messages{
+		// 		MessageID:    msg.MessageId,
+		// 		Priority:     model.Priority(msg.Priority),
+		// 		Timestamp:    msg.Timestamp,
+		// 		ContentType:  msg.ContentType,
+		// 		Acknowledger: &Acknowledger{msg.Acknowledger, msg.DeliveryTag},
+		// 		Payload:      msg.Body,
+		// 	}
+
+		// 	// // delegates an acknowledgement
+		// 	// if err := msg.Ack(false); err != nil {
+		// 	// 	log.Warnf("Error delegating acknowle message: %s", err)
+		// 	// }
+		// }
+		// 		close(out)
 	}()
 
 	return out, nil

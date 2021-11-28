@@ -134,8 +134,6 @@ func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics
 
 // Store stores a message in the database
 func (mr *MessageRepository) Store(msg model.Messages) Results {
-	log.Debugf("Processing message: %+v", msg)
-
 	mr.RepositoryMessagesTotal.Inc()
 
 	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
