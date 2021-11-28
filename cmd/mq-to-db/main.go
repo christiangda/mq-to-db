@@ -266,7 +266,7 @@ func main() {
 	// repository used to store a consumer.Message into the database
 	msgsRepo := repository.NewMessageRepository(appCtx, db, mtrs)
 
-	// pseudo code
+	// Business logic
 	distpatcherConfig := dispatcher.Config{
 		ApplicationName:     conf.Application.Name,
 		HostName:            conf.Application.Name,
@@ -274,9 +274,8 @@ func main() {
 		StorageWorkers:      conf.Dispatcher.StorageWorkers,
 	}
 
-	consumer := dispatcher.NewConsumer(context.TODO(), qc, distpatcherConfig)
-
-	storer := dispatcher.NewStorer(context.TODO(), msgsRepo, distpatcherConfig)
+	consumer := dispatcher.NewConsumer(appCtx, qc, distpatcherConfig)
+	storer := dispatcher.NewStorer(appCtx, msgsRepo, distpatcherConfig)
 
 	go func() {
 		chanResults := storer.Store(consumer.Consume())
@@ -291,7 +290,7 @@ func main() {
 			}
 		}()
 	}()
-	// end of pseudo code
+	// end of Business logic
 
 	// ********************************************
 

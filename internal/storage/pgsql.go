@@ -63,27 +63,27 @@ func NewPGSQL(c *Config) (*PGSQL, error) {
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
 
-		DBMetrics: NewDBMetricsCollector("mq-to-db", "db", pool),
+		DBMetrics: NewDBMetricsCollector("mq_to_db", "db", pool),
 		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_ping_total",
 			Help:      "Number of ping executed by storage.",
 		},
 		),
 		StoragePingTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_ping_timeout_total",
 			Help:      "Number of ping with timeouts executed by storage.",
 		},
 		),
 		StorageExecTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_exec_total",
 			Help:      "Number of exec executed by storage.",
 		},
 		),
 		StorageExecTimeOutTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_exec_timeout_total",
 			Help:      "Number of exec with timeouts executed by storage.",
 		},

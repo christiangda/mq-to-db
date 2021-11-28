@@ -33,7 +33,7 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 		conf: conf,
 
 		StorageWorkerRunning: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_worker_running",
 			Help:      "Number of Storage Workers running",
 		},
@@ -42,7 +42,7 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 				"name",
 			}),
 		StorageWorkerMessages: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_worker_messages_total",
 			Help:      "Number of messages consumed my storage_workers.",
 		},
@@ -51,7 +51,7 @@ func NewStorer(ctx context.Context, repo Repository, conf Config) *Storer {
 				"name",
 			}),
 		StorageWorkerProcessingDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "mq-to-db",
+			Namespace: "mq_to_db",
 			Name:      "storage_worker_process_duration_seconds",
 			Help:      "Amount of time spent storing messages",
 			Buckets:   []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15}, // Observation buckets
