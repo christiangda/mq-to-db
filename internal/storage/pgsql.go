@@ -13,13 +13,13 @@ import (
 
 //go:generate go run github.com/golang/mock/mockgen@v1.6.0 -package=mocks -destination=../../mocks/storage/pgsql_mocks.go -source=pgsql.go SQLService
 // Store interface is used to consume methods from sql.db
-type SQLService interface {
-	Conn(ctx context.Context) (*sql.Conn, error)
-	PingContext(ctx context.Context) error
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	Stats() sql.DBStats
-	Close() error
-}
+// type SQLService interface {
+// 	Conn(ctx context.Context) (*sql.Conn, error)
+// 	PingContext(ctx context.Context) error
+// 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+// 	Stats() sql.DBStats
+// 	Close() error
+// }
 
 // PGSQL is a implementation go storage.Store interface
 type PGSQL struct {
@@ -29,6 +29,7 @@ type PGSQL struct {
 	maxPingTimeOut  time.Duration
 	maxQueryTimeOut time.Duration
 
+	DBMetrics               *DBMetricsCollector
 	StoragePingTotal        prometheus.Counter
 	StoragePingTimeOutTotal prometheus.Counter
 	StorageExecTotal        prometheus.Counter
@@ -36,7 +37,8 @@ type PGSQL struct {
 }
 
 // New return
-func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
+// func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
+func NewPGSQL(c *Config) (*PGSQL, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		c.Address,
 		c.Port,
@@ -61,6 +63,7 @@ func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
 		maxPingTimeOut:  c.MaxPingTimeOut,
 		maxQueryTimeOut: c.MaxQueryTimeOut,
 
+		DBMetrics: NewDBMetricsCollector("mq-to-db", "db", pool),
 		StoragePingTotal: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "mq-to-db",
 			Name:      "storage_ping_total",
@@ -86,6 +89,13 @@ func NewPGSQL(c *Config, db SQLService) (*PGSQL, error) {
 		},
 		),
 	}
+
+	prometheus.MustRegister(out.DBMetrics)
+	prometheus.MustRegister(out.StoragePingTotal)
+	prometheus.MustRegister(out.StoragePingTimeOutTotal)
+	prometheus.MustRegister(out.StorageExecTotal)
+	prometheus.MustRegister(out.StorageExecTimeOutTotal)
+
 	return out, nil
 }
 
@@ -142,3 +152,12 @@ func (c *PGSQL) Close() error {
 func (c *PGSQL) Stats() sql.DBStats {
 	return c.pool.Stats()
 }
+
+// func (c *PGSQL) MetricsHandler() http.Handler {
+// 	return promhttp.HandlerFor(
+// 		prometheus.DefaultGatherer,
+// 		promhttp.HandlerOpts{
+// 			EnableOpenMetrics: true,
+// 		},
+// 	)
+// }

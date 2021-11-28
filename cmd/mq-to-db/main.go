@@ -14,6 +14,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
@@ -25,6 +27,7 @@ import (
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
+	_ "github.com/lib/pq" // this is the way to load pgsql driver to be used by golang database/sql
 	"github.com/spf13/viper"
 )
 
@@ -328,16 +331,15 @@ func main() {
 	// Filling global metrics
 	mtrs.Up.Add(1)
 	mtrs.Info.Add(1)
-	mtrs.EnableDBStats(db) // this enable the DB Stats collector for database/sql package
 
 	// Expose metrics, health checks and home
 	mux := http.NewServeMux()
 	// metrics handler
-	mux.Handle(conf.Application.MetricsPath, mtrs.GetHandler())
+	mux.Handle(conf.Application.MetricsPath, metricsHandler())
 	// Home handler
-	mux.HandleFunc("/", HomePage)
+	mux.HandleFunc("/", homePageHandler)
 	// health check handler
-	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
+	mux.HandleFunc(conf.Application.HealthPath, healthCheckHandler)
 
 	// Profilling endpoints when use -profile or --profile
 	if conf.Server.Profile {
@@ -425,7 +427,7 @@ func ListenOSSignals(osSignal *chan bool) {
 }
 
 // HomePage render the home page website
-func HomePage(w http.ResponseWriter, r *http.Request) {
+func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	indexHTMLTmpl := `
 <html>
 <head>
@@ -486,6 +488,15 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 
 // HealthCheck render the health check endpoint for the whole application
 // TODO: Implement the health check, when database fail or consumer fail
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
+}
+
+func metricsHandler() http.Handler {
+	return promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		},
+	)
 }

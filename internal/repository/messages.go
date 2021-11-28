@@ -8,6 +8,7 @@ import (
 	"github.com/christiangda/mq-to-db/internal/messages"
 	"github.com/christiangda/mq-to-db/internal/metrics"
 	"github.com/christiangda/mq-to-db/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -42,35 +43,102 @@ func (r *Results) ToJSON() string {
 
 // MessageRepository represents a message repository
 type MessageRepository struct {
-	ctx  context.Context
-	sql  StorageService
-	mtrs *metrics.Metrics
+	ctx context.Context
+	sql StorageService
+
+	RepositoryMessagesTotal              prometheus.Counter
+	RepositoryMessagesErrorsTotal        prometheus.Counter
+	RepositorySQLMessagesTotal           prometheus.Counter
+	RepositorySQLMessagesErrorsTotal     prometheus.Counter
+	RepositorySQLMessagesToDBTotal       prometheus.Counter
+	RepositorySQLMessagesToDBErrorsTotal prometheus.Counter
+	RepositoryMessagesAckTotal           prometheus.Counter
+	RepositoryMessagesRejectedTotal      prometheus.Counter
 }
 
 // NewMessageRepository return a new Message Repository instance
 func NewMessageRepository(ctx context.Context, sql StorageService, mtrs *metrics.Metrics) *MessageRepository {
-	return &MessageRepository{
-		ctx:  ctx,
-		sql:  sql,
-		mtrs: mtrs,
+	out := &MessageRepository{
+		ctx: ctx,
+		sql: sql,
+
+		RepositoryMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_messages_total",
+			Help:      "Number of messages processed by storer.",
+		},
+		),
+		RepositoryMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_messages_errors_total",
+			Help:      "Number of messages with errors processed by storer.",
+		},
+		),
+		RepositorySQLMessagesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_sql_messages_total",
+			Help:      "Number of sql messages processed by storer.",
+		},
+		),
+		RepositorySQLMessagesErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_sql_messages_errors_total",
+			Help:      "Number of sql messages with errors processed by storer.",
+		},
+		),
+		RepositorySQLMessagesToDBTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_sql_messages_to_db_total",
+			Help:      "Number of sql messages sent to database by storer.",
+		},
+		),
+		RepositorySQLMessagesToDBErrorsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_sql_messages_to_db_errors_total",
+			Help:      "Number of sql messages with errors sent to database by storer.",
+		},
+		),
+		RepositoryMessagesAckTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_messages_ack_total",
+			Help:      "Number of messages ack into mq system.",
+		},
+		),
+		RepositoryMessagesRejectedTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "mq-to-db",
+			Name:      "storer_messages_rejected_total",
+			Help:      "Number of messages rejected into mq system.",
+		},
+		),
 	}
+
+	prometheus.MustRegister(out.RepositoryMessagesTotal)
+	prometheus.MustRegister(out.RepositoryMessagesErrorsTotal)
+	prometheus.MustRegister(out.RepositorySQLMessagesTotal)
+	prometheus.MustRegister(out.RepositorySQLMessagesErrorsTotal)
+	prometheus.MustRegister(out.RepositorySQLMessagesToDBTotal)
+	prometheus.MustRegister(out.RepositorySQLMessagesToDBErrorsTotal)
+	prometheus.MustRegister(out.RepositoryMessagesAckTotal)
+	prometheus.MustRegister(out.RepositoryMessagesRejectedTotal)
+
+	return out
 }
 
 // Store stores a message in the database
 func (mr *MessageRepository) Store(msg model.Messages) Results {
 	log.Debugf("Processing message: %s", msg.Payload)
 
-	mr.mtrs.RepositoryMessagesTotal.Inc()
+	mr.RepositoryMessagesTotal.Inc()
 
 	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
 	if err != nil {
 
-		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
-		mr.mtrs.RepositorySQLMessagesErrorsTotal.Inc()
+		mr.RepositoryMessagesErrorsTotal.Inc()
+		mr.RepositorySQLMessagesErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
+			mr.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -86,17 +154,17 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 	}
 
 	log.Debugf("Executing SQL sentence: %s", sqlm.Content.Sentence)
-	mr.mtrs.RepositorySQLMessagesTotal.Inc()
+	mr.RepositorySQLMessagesTotal.Inc()
 
 	result, err := mr.sql.ExecContext(mr.ctx, sqlm.Content.Sentence)
 	if err != nil {
 
-		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
-		mr.mtrs.RepositorySQLMessagesToDBErrorsTotal.Inc()
+		mr.RepositoryMessagesErrorsTotal.Inc()
+		mr.RepositorySQLMessagesToDBErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
+			mr.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -111,13 +179,13 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 		}
 	}
 
-	mr.mtrs.RepositorySQLMessagesToDBTotal.Inc()
+	mr.RepositorySQLMessagesToDBTotal.Inc()
 
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
+			mr.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -136,7 +204,7 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 	if err := msg.Ack(); err != nil {
 		if err = msg.Reject(false); err != nil {
 
-			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
+			mr.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
 				Error:   err,
@@ -151,7 +219,7 @@ func (mr *MessageRepository) Store(msg model.Messages) Results {
 		}
 	}
 	log.Debugf("Ack the message: %s", sqlm.ToJSON())
-	mr.mtrs.RepositoryMessagesAckTotal.Inc()
+	mr.RepositoryMessagesAckTotal.Inc()
 
 	return Results{RowsAffected: rows}
 }
