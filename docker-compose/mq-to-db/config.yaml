@@ -4,7 +4,6 @@ dispatcher:
   storageWorkers: 30 # Number of go routines sending messages to storage
 
 consumer:
-  kind: rabbitmq
   address: rabbitmq
   port: 5672
   requestedHeartbeat: 25s
@@ -30,7 +29,6 @@ consumer:
     autoDelete: false
 
 database:
-  kind: postgresql
   address: postgresql
   port: 5432
   username: postgres

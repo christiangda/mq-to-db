@@ -448,7 +448,8 @@ func ListenOSSignals(osSignal *chan bool) {
 
 // This function consume messages from queue system and return the messages as a channel of them
 func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-chan consumer.Messages {
-	out := make(chan consumer.Messages)
+	// TODO: define the buffer size
+	out := make(chan consumer.Messages, 10)
 	go func() {
 		defer close(out)
 
@@ -464,27 +465,26 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 		}
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
-		for m := range msgs {
+	loop:
+		for {
 			select {
 
-			case out <- m: // put messages consumed into the out chan
+			case msg, ok := <-msgs: // put messages consumed into the out chan
+				if !ok {
+					log.Warn("messageConsumer: Channel closed")
+					break loop
+				}
+
 				mtrs.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
+				out <- msg
 
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping consumer")
 				mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
+				qc.Close() // TODO: Close the consumer connection not the mq connection
 
-				// closes the consumer queue and connection
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					qc.Close() // TODO: Close the consumer connection not the mq connection
-					wg.Done()
-				}()
-				wg.Wait()
-
-				return // go out of the for loop
+				break loop // go out of the for loop
 			}
 		}
 	}()
@@ -494,7 +494,8 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 
 // This function consume messages from queue system and return the messages as a channel of them
 func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st *repository.MessageRepository) <-chan repository.Results {
-	out := make(chan repository.Results)
+	// TODO: define the buffer size
+	out := make(chan repository.Results, 10)
 	go func() {
 		defer close(out)
 
@@ -504,10 +505,16 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 		mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
+	loop:
 		for {
 			select {
 
-			case m := <-chanMsgs:
+			case m, ok := <-chanMsgs:
+				if !ok {
+					log.Warn("messageProcessor: Channel closed")
+					break loop
+				}
+
 				startTime := time.Now()
 
 				r := st.Store(m) // proccess and storage message into db
@@ -525,7 +532,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 				log.WithFields(log.Fields{"worker": id}).Warnf("Stoping storage worker")
 				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
-				return // go out of the for loop
+				break loop // go out of the for loop
 
 			}
 		}
@@ -538,7 +545,9 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 // bassically convert (...<-chan consumer.Messages) --> (<-chan consumer.Messages)
 func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
 	var wg sync.WaitGroup
-	out := make(chan consumer.Messages)
+
+	// TODO: define the buffer size
+	out := make(chan consumer.Messages, 10)
 
 	// internal function to merge channels in only one
 	multiplex := func(channel <-chan consumer.Messages) {
@@ -571,7 +580,9 @@ func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Message
 // bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
 func mergeResultsChans(ctx context.Context, channels ...<-chan repository.Results) <-chan repository.Results {
 	var wg sync.WaitGroup
-	out := make(chan repository.Results)
+
+	// TODO: define the buffer size
+	out := make(chan repository.Results, 10)
 
 	// internal function to merge channels in only one
 	multiplex := func(channel <-chan repository.Results) {
