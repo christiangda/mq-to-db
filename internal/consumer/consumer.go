@@ -80,9 +80,14 @@ func (c *Consumer) Consume(ctx context.Context, id string) (<-chan model.Message
 			return
 		}
 
+	loop:
 		for {
 			select {
-			case msg := <-msgs:
+			case msg, ok := <-msgs:
+				if !ok {
+					log.Warn("RabbitMQ Consume: Channel closed")
+					break loop
+				}
 
 				log.Tracef("Received message: %s, consumer: %s", msg.Body, id)
 
@@ -110,26 +115,9 @@ func (c *Consumer) Consume(ctx context.Context, id string) (<-chan model.Message
 				}()
 				wg.Wait()
 
-				return
+				break loop
 			}
 		}
-
-		// log.WithFields(log.Fields{"consumer": id}).Infof("Starting consumer")
-		// c.ConsumerRunning.With(prometheus.Labels{"name": id}).Inc()
-
-		// for msg := range msgs {
-		// 	out <- model.Messages{
-		// 		MessageID:    msg.MessageId,
-		// 		Priority:     model.Priority(msg.Priority),
-		// 		Timestamp:    msg.Timestamp,
-		// 		ContentType:  msg.ContentType,
-		// 		Acknowledger: msg.Acknowledger,
-		// 		DeliveryTag:  msg.DeliveryTag,
-		// 		Payload:      msg.Body,
-		// 	}
-		// 	c.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
-		// }
-		// close(out)
 	}()
 
 	return out, nil

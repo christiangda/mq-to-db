@@ -184,9 +184,14 @@ func (rmq *RabbitMQ) Consume(ctx context.Context, id string) (<-chan amqp.Delive
 			return
 		}
 
+	loop:
 		for {
 			select {
-			case msg := <-msgs:
+			case msg, ok := <-msgs:
+				if !ok {
+					log.Warn("RabbitMQ Consume: Channel closed")
+					break loop
+				}
 
 				log.Tracef("Received message: %s, consumer: %s", msg.Body, id)
 				out <- msg
@@ -199,7 +204,7 @@ func (rmq *RabbitMQ) Consume(ctx context.Context, id string) (<-chan amqp.Delive
 
 				rmq.channel.Close()
 				rmq.conn.Close()
-				return
+				break loop
 			}
 		}
 	}()
