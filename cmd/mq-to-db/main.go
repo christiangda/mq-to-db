@@ -304,9 +304,9 @@ func main() {
 	// metrics handler
 	mux.Handle(conf.Application.MetricsPath, mtrs.GetHandler())
 	// Home handler
-	mux.HandleFunc("/", HomePage)
+	mux.HandleFunc("/", HomePageHandler)
 	// health check handler
-	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
+	mux.HandleFunc(conf.Application.HealthPath, HealthCheckHandler)
 
 	// Profilling endpoints whe -profile or --profile
 	if conf.Server.Profile {
@@ -559,7 +559,7 @@ func mergeResultsChans(ctx context.Context, channels ...<-chan repository.Result
 }
 
 // HomePage render the home page website
-func HomePage(w http.ResponseWriter, r *http.Request) {
+func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	indexHTMLTmpl := `
 <html>
 <head>
@@ -620,6 +620,6 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 
 // HealthCheck render the health check endpoint for the whole application
 // TODO: Implement the health check, when database fail or consumer fail
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 }
