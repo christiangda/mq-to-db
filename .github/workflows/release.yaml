@@ -51,6 +51,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Git Current Tag Version
+        run: |
+          echo ${{ env.GITHUB_REF }} | cut -d / -f 3
+
       - name: Git Version
         run: |
           git rev-parse --abbrev-ref HEAD
@@ -92,6 +96,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
+      - name: Set id for github tag version
+        id: get_tag
+        run: echo ::set-output name=name::$(echo $GITHUB_REF | cut -d / -f 3)
+
       - name: Docker Version
         run: docker version
 
@@ -112,7 +120,7 @@ jobs:
         run: tree .
 
       - name: Build Docker Images for docker hub
-        run: make container-build CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }}
+        run: make container-build CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
 
       - name: Show Local Docker Images
         run: docker images
@@ -121,13 +129,13 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
 
       - name: Publish Images in Docker Hub
-        run: make container-publish-docker CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }}
+        run: make container-publish-docker CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
 
       # - name: Logging in GitHub Packages
       #   run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
 
       # - name: Publish Images in GitHub Packages
-      #   run: make container-publish-github
+      #   run: make container-publish-github CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
 
   create_github_release:
     name: Create Github Release
