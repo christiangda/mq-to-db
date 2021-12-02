@@ -27,6 +27,10 @@ GO_CGO_ENABLED ?= 0
 GO_FILES       := $(shell go list ./... | grep -v /mocks/)
 
 # Container
+CONTAINER_OS   ?= linux
+#CONTAINER_ARCH ?= arm64v8 amd64
+CONTAINER_ARCH ?= amd64
+CONTAINER_REPO ?= christiangda
 CONTAINER_BUILD_COMMAND ?= docker build
 CONTAINER_PUBLISH_COMMAND ?= docker push
 CONTAINER_TAG_COMMAND ?= docker tag
