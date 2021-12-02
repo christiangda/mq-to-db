@@ -17,8 +17,8 @@ consumer:
     autoDelete: true
     exclusive: false
     autoACK: false
-    PrefetchCount: 500
-    PrefetchSize: 0
+    prefetchCount: 500
+    prefetchSize: 0
     args:
       x-message-ttl: 180000
       x-dead-letter-exchange: retry.exchange

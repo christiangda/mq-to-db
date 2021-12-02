@@ -104,7 +104,7 @@ services:
       SERVER_PORT: 8080
     command:
       - --profile
-      - --logLevel=info # as a container arg
+      - --logLevel=debug # as a container arg
     ports:
       - 8080:8080
     links:
@@ -134,7 +134,7 @@ services:
       SERVER_PORT: 8081
     command:
       - --profile
-      - --logLevel=info # as a container arg
+      - --logLevel=debug # as a container arg
     ports:
       - 8081:8081
     links:

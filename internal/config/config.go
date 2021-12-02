@@ -54,8 +54,8 @@ type Config struct {
 			AutoDelete    bool   `json:"autoDelete" yaml:"autoDelete"`
 			Exclusive     bool   `json:"exclusive" yaml:"exclusive"`
 			AutoACK       bool   `json:"autoACK" yaml:"autoACK"`
-			PrefetchCount int    `json:"PrefetchCount" yaml:"PrefetchCount"`
-			PrefetchSize  int    `json:"PrefetchSize" yaml:"PrefetchSize"`
+			PrefetchCount int    `json:"prefetchCount" yaml:"prefetchCount"`
+			PrefetchSize  int    `json:"prefetchSize" yaml:"prefetchSize"`
 			Args          args   `json:"args" yaml:"args"`
 		} `json:"Queue" yaml:"queue"`
 		Exchange struct {
