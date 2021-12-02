@@ -96,7 +96,7 @@ jobs:
         run: tree .
 
       - name: Build Docker Images for docker hub
-        run: make container-build
+        run: make container-build CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }}
 
       - name: Show Local Docker Images
         run: docker images
@@ -105,7 +105,7 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
 
       - name: Publish Images in Docker Hub
-        run: make container-publish-docker
+        run: make container-publish-docker CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }}
 
       # - name: Logging in GitHub Packages
       #   run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
