@@ -8,15 +8,66 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// Consumer Default values
+	DefaultConsumerAddress            = "localhost"
+	DefaultConsumerPort               = 5672
+	DefaultConsumerRequestedHeartbeat = time.Second * 10
+	DefaultConsumerQueueExclusive     = false
+	DefaultConsumerQueueAutoACK       = false
+
+	// Database Default values
+	DefaultDatabaseAddress         = "localhost"
+	DefaultDatabasePort            = 5432
+	DefaultDatabaseSSLMode         = "disable"
+	DefaultDatabaseDatabase        = "postgres"
+	DefatulDatabaseUsername        = "postgres"
+	DefaultDatabasePassword        = "postgres"
+	DefaultDatabaseMaxPingTimeOut  = time.Second * 1
+	DefaultDatabaseMaxQueryTimeOut = time.Second * 10
+	DefaultDatabaseConnMaxLifetime = time.Second * 0
+	DefaultDatabaseMaxIdleConns    = 10
+	DefaultDatabaseMaxOpenConns    = 20
+
+	DefaultDispatcherConsumerConcurrency = 1
+	DefaultDispatcherStorageWorkers      = 5
+)
+
+func New() Config {
+	return Config{
+		Consumer: Consumer{
+			Address:            DefaultConsumerAddress,
+			Port:               DefaultConsumerPort,
+			RequestedHeartbeat: DefaultConsumerRequestedHeartbeat,
+			Queue: ConsumerQueue{
+				Exclusive: DefaultConsumerQueueExclusive,
+				AutoACK:   DefaultConsumerQueueAutoACK,
+			},
+		},
+		Database: Database{
+			Address:         DefaultDatabaseAddress,
+			Port:            DefaultDatabasePort,
+			SSLMode:         DefaultDatabaseSSLMode,
+			Database:        DefaultDatabaseDatabase,
+			Username:        DefatulDatabaseUsername,
+			Password:        DefaultDatabasePassword,
+			MaxPingTimeOut:  DefaultDatabaseMaxPingTimeOut,
+			MaxQueryTimeOut: DefaultDatabaseMaxQueryTimeOut,
+			ConnMaxLifetime: DefaultDatabaseConnMaxLifetime,
+			MaxIdleConns:    DefaultDatabaseMaxIdleConns,
+			MaxOpenConns:    DefaultDatabaseMaxOpenConns,
+		},
+		Dispatcher: Dispatcher{
+			ConsumerConcurrency: DefaultDispatcherConsumerConcurrency,
+			StorageWorkers:      DefaultDispatcherStorageWorkers,
+		},
+	}
+}
+
 // This is a key value storage type used into some properties of the conf
 type args map[string]interface{}
 
 // Config is the structure with all configuration
-//
-// how is the name into
-// the config file
-//     |                  |           |
-// `mapstructure:"type" json:"type" yaml:"type"`
 type Config struct {
 	Server      Server      `mapstructure:"server" json:"server" yaml:"server"`
 	Dispatcher  Dispatcher  `json:"dispatcher" yaml:"dispatcher"`
@@ -64,17 +115,17 @@ type Dispatcher struct {
 }
 
 type Consumer struct {
-	Address            string        `json:"address" yaml:"address"`
-	Port               int           `json:"port" yaml:"port"`
-	RequestedHeartbeat time.Duration `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
-	Username           string        `json:"username" yaml:"username"`
-	Password           string        `json:"password" yaml:"password"`
-	VirtualHost        string        `json:"virtualHost" yaml:"virtualHost"`
-	Queue              Queue         `json:"queue" yaml:"queue"`
-	Exchange           Exchange      `json:"exchange" yaml:"exchange"`
+	Address            string           `json:"address" yaml:"address"`
+	Port               int              `json:"port" yaml:"port"`
+	RequestedHeartbeat time.Duration    `json:"requestedHeartbeat" yaml:"requestedHeartbeat"`
+	Username           string           `json:"username" yaml:"username"`
+	Password           string           `json:"password" yaml:"password"`
+	VirtualHost        string           `json:"virtualHost" yaml:"virtualHost"`
+	Queue              ConsumerQueue    `json:"queue" yaml:"queue"`
+	Exchange           ConsumerExchange `json:"exchange" yaml:"exchange"`
 }
 
-type Queue struct {
+type ConsumerQueue struct {
 	Name          string `json:"name" yaml:"name"`
 	RoutingKey    string `json:"routingKey" yaml:"routingKey"`
 	Durable       bool   `json:"durable" yaml:"durable"`
@@ -86,7 +137,7 @@ type Queue struct {
 	Args          args   `json:"args" yaml:"args"`
 }
 
-type Exchange struct {
+type ConsumerExchange struct {
 	Name       string `json:"name" yaml:"name"`
 	Kind       string `mapstructure:"type" json:"type" yaml:"type"` // mapstructure is needed because the field into the config file is type and we are changing to kind
 	Durable    bool   `json:"durable" yaml:"durable"`

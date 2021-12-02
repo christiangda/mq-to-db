@@ -50,6 +50,8 @@ var (
 func init() { // package initializer
 	appHost, _ = os.Hostname()
 
+	conf = config.New()
+
 	// Set default values
 	conf.Application.Name = appName
 	conf.Application.Description = appDescription
@@ -123,7 +125,7 @@ func init() { // package initializer
 	}
 
 	// set the configured log level
-	if level, err := log.ParseLevel(conf.Server.LogLevel); err == nil {
+	if level, err := log.ParseLevel(strings.ToLower(conf.Server.LogLevel)); err == nil {
 		log.SetLevel(level)
 	} else {
 		log.Errorf("invalid log level %s", err)
@@ -134,43 +136,6 @@ func init() { // package initializer
 
 func main() {
 	log.Info("Starting application")
-
-	// Viper default values to conf parameters when config file doesn't have it
-	// The config file values overrides these
-
-	// ***** Dispatcher *****
-	// dispatcher.consumerConcurrency: 1
-	// dispatcher.storageWorkers: 5
-	v.SetDefault("dispatcher.consumerConcurrency", 1)
-	v.SetDefault("dispatcher.storageWorkers", 5)
-
-	// ***** DATABASE *****
-	// database.kind: postgresql
-	// database.port: 5432
-	// database.sslMode: disable
-	// database.maxPingTimeOut: 1s
-	// database.maxQueryTimeOut: 10s
-	// database.connMaxLifetime: 0
-	// database.maxIdleConns: 5
-	// database.maxOpenConns: 20
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.sslMode", "disable")
-	v.SetDefault("Database.maxPingTimeOut", "1s")
-	v.SetDefault("Database.maxQueryTimeOut", "10s")
-	v.SetDefault("Database.connMaxLifetime", 0)
-	v.SetDefault("Database.maxIdleConns", 5)
-	v.SetDefault("Database.maxIdleConns", 20)
-	// ***** RabbitMQ *****
-	// consumer.workers: 10
-	// consumer.kind: rabbitmq
-	// consumer.port: 5672
-	// consumer.requestedHeartbeat: 25
-	// consumer.queue.autoACK: false
-	v.SetDefault("consumer.workers", 10)
-	v.SetDefault("consumer.port", 5672)
-	v.SetDefault("consumer.requestedHeartbeat", "10s")
-	v.SetDefault("consumer.queue.exclusive", false)
-	v.SetDefault("consumer.queue.autoACK", false)
 
 	// Read config file
 	v.SetConfigType("yaml")
