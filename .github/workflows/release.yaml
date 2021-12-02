@@ -51,6 +51,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Git Version
+        run: |
+          git rev-parse --abbrev-ref HEAD
+
+      - name: Git Revision
+        run: |
+          git rev-parse HEAD | tr -d '\040\011\012\015\n'
+
+      - name: Git Branch
+        run: |
+          git rev-parse --abbrev-ref HEAD | tr -d '\040\011\012\015\n'
+
+      - name: Git User
+        run: |
+          git config --get user.name | tr -d '\040\011\012\015\n'
+
       - name: Build Distribution Cross-Platform
         run: make build-dist
 
