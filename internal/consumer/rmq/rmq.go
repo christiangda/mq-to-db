@@ -1,10 +1,10 @@
 package rmq
 
 import (
-	"sync"
 	"time"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -13,6 +13,7 @@ import (
 type RMQ struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
+	closed  <-chan *amqp.Error
 
 	name string
 	uri  string
@@ -41,7 +42,6 @@ type RMQ struct {
 
 // New create a new rabbitmq consumer with implements consumer.Consumer interface
 func New(c *consumer.Config) (*RMQ, error) {
-
 	uri, err := c.GetURI()
 	if err != nil {
 		return nil, err
@@ -91,7 +91,6 @@ func New(c *consumer.Config) (*RMQ, error) {
 
 // Connect to RabbitMQ server and channel
 func (c *RMQ) Connect() error {
-
 	amqpConfig := amqp.Config{}
 
 	amqpConfig.Heartbeat = c.requestedHeartbeat
@@ -106,14 +105,16 @@ func (c *RMQ) Connect() error {
 	if err != nil {
 		return err
 	}
-	//defer conn.Close()
+	// defer conn.Close()
 	c.conn = conn
+
+	c.closed = conn.NotifyClose(make(chan *amqp.Error))
 
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return err
 	}
-	//defer ch.Close()
+	// defer ch.Close()
 	c.channel = ch
 
 	err = ch.Qos(
@@ -167,42 +168,49 @@ func (c *RMQ) Connect() error {
 
 // Consume messages from the queue channel
 func (c *RMQ) Consume(id string) (<-chan consumer.Messages, error) {
+	// //TODO: define the buffer size
+	out := make(chan consumer.Messages, 10)
 
-	// Register a consumer
-	msgs, err := c.channel.Consume(
-		c.queue.name,
-		id,                // consumer id
-		c.queue.autoACK,   // auto-ack
-		c.queue.exclusive, // exclusive
-		false,             // no-local
-		false,             // no-wait
-		nil,               // args
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var wg sync.WaitGroup
-	// This channels is used to be filled by messages comming from
-	// the queue system
-	// This is part of "producer-consume queue pattern"
-	out := make(chan consumer.Messages, len(msgs)+1)
-
-	// NOTE: This is necessary to consume the original channel without blocking it
-	wg.Add(1)
 	go func() {
-		for d := range msgs {
-			out <- consumer.Messages{
-				MessageID:    d.MessageId,
-				Priority:     consumer.Priority(d.Priority),
-				Timestamp:    d.Timestamp,
-				ContentType:  d.ContentType,
-				Acknowledger: &Acknowledger{d.Acknowledger, d.DeliveryTag},
-				Payload:      d.Body,
+		defer close(out)
+
+		msgs, err := c.channel.Consume(
+			c.queue.name,
+			id,                // consumer id
+			c.queue.autoACK,   // auto-ack
+			c.queue.exclusive, // exclusive
+			false,             // no-local
+			false,             // no-wait
+			nil,               // args
+		)
+		if err != nil {
+			log.Error(err)
+		}
+
+	loop:
+		for {
+			select {
+			case msg, ok := <-msgs:
+				if !ok {
+					log.Warn("RabbitMQ Consume: Channel closed")
+					break loop
+				}
+
+				out <- consumer.Messages{
+					MessageID:    msg.MessageId,
+					Priority:     consumer.Priority(msg.Priority),
+					Timestamp:    msg.Timestamp,
+					ContentType:  msg.ContentType,
+					Acknowledger: &Acknowledger{msg.Acknowledger, msg.DeliveryTag},
+					Payload:      msg.Body,
+				}
+
+			case <-c.closed:
+				log.Fatal("RabbitMQ Connection closed")
+				c.Close()
+				break loop
 			}
 		}
-		close(out)
-		wg.Done()
 	}()
 
 	return out, nil

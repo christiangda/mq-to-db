@@ -21,20 +21,56 @@ var (
 	GoVersion = runtime.Version()
 )
 
-// GetVersionInfo returns application version
-func GetVersionInfo() string {
-	return fmt.Sprintf("(version=%s, branch=%s, revision=%s)",
-		Version,
-		Branch,
-		Revision)
+// GetVersion returns the version string.
+func GetVersion() string {
+	if Version == "" {
+		Version = "0.0.0"
+	}
+
+	return Version
 }
 
-// GetVersionInfoExtended returns application version, branch and revision information.
-func GetVersionInfoExtended() string {
-	return fmt.Sprintf("(version=%s, branch=%s, revision=%s, go=%s, user=%s, date=%s)",
+// GetVersionInfo returns the version string.
+func GetVersionInfo() string {
+	if Version == "" {
+		Version = "0.0.0"
+	}
+	if Revision == "" {
+		Revision = "0"
+	}
+	if Branch == "" {
+		Branch = "unknown"
+	}
+
+	return fmt.Sprintf("(version=%s, revision=%s, branch=%s)",
 		Version,
-		Branch,
 		Revision,
+		Branch,
+	)
+}
+
+// GetVersionInfoExtended returns the version string.
+func GetVersionInfoExtended() string {
+	if Version == "" {
+		Version = "0.0.0"
+	}
+	if Revision == "" {
+		Revision = "0"
+	}
+	if Branch == "" {
+		Branch = "unknown"
+	}
+	if BuildUser == "" {
+		BuildUser = "unknown"
+	}
+	if BuildDate == "" {
+		BuildDate = "unknown"
+	}
+
+	return fmt.Sprintf("(version=%s, revision=%s, branch=%s, go=%s, user=%s, date=%s)",
+		Version,
+		Revision,
+		Branch,
 		GoVersion,
 		BuildUser,
 		BuildDate)

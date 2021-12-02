@@ -4,11 +4,11 @@ ARG CONTAINER_OS="linux"
 ARG APP_NAME="mq-to-db"
 ARG HEALTH_CHECK_PATH="health"
 ARG METRICS_PORT="8080"
-ARG GO_VERSION="1.16"
+ARG GO_VERSION="1.17"
 FROM golang:${GO_VERSION} AS build-container
 RUN apt install -y git gcc make
 ADD . /src
-RUN cd /src && GOOS=${CONTAINER_OS} GOARCH=${CONTAINER_ARCH} make clean go-build
+RUN cd /src && GOOS=${CONTAINER_OS} GOARCH=${CONTAINER_ARCH} make
 
 # App container
 FROM ${CONTAINER_ARCH}/busybox:glibc
@@ -28,7 +28,7 @@ RUN mkdir -p /home/nobody && \
 
 ENV HOME="/home/nobody"
 
-COPY --from=build-container /src/mq-to-db /bin/mq-to-db
+COPY --from=build-container /src/build/mq-to-db /bin/mq-to-db
 COPY --from=build-container /src/config-sample.yaml /etc/mq-to-db/config-config.yaml
 RUN chmod +x /bin/mq-to-db
 

@@ -20,13 +20,11 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/christiangda/mq-to-db/internal/consumer"
-	"github.com/christiangda/mq-to-db/internal/consumer/kafka"
 	"github.com/christiangda/mq-to-db/internal/consumer/rmq"
 	"github.com/christiangda/mq-to-db/internal/metrics"
+	"github.com/christiangda/mq-to-db/internal/repository"
 	"github.com/christiangda/mq-to-db/internal/storage"
-	"github.com/christiangda/mq-to-db/internal/storage/memory"
 	"github.com/christiangda/mq-to-db/internal/storage/pgsql"
-	"github.com/christiangda/mq-to-db/internal/storer"
 
 	"github.com/christiangda/mq-to-db/internal/config"
 	"github.com/christiangda/mq-to-db/internal/version"
@@ -51,6 +49,8 @@ var (
 
 func init() { // package initializer
 	appHost, _ = os.Hostname()
+
+	conf = config.New()
 
 	// Set default values
 	conf.Application.Name = appName
@@ -125,7 +125,7 @@ func init() { // package initializer
 	}
 
 	// set the configured log level
-	if level, err := log.ParseLevel(conf.Server.LogLevel); err == nil {
+	if level, err := log.ParseLevel(strings.ToLower(conf.Server.LogLevel)); err == nil {
 		log.SetLevel(level)
 	} else {
 		log.Errorf("invalid log level %s", err)
@@ -136,45 +136,6 @@ func init() { // package initializer
 
 func main() {
 	log.Info("Starting application")
-
-	// Viper default values to conf parameters when config file doesn't have it
-	// The config file values overrides these
-
-	// ***** Dispatcher *****
-	// dispatcher.consumerConcurrency: 1
-	// dispatcher.storageWorkers: 5
-	v.SetDefault("dispatcher.consumerConcurrency", 1)
-	v.SetDefault("dispatcher.storageWorkers", 5)
-
-	// ***** DATABASE *****
-	// database.kind: postgresql
-	// database.port: 5432
-	// database.sslMode: disable
-	// database.maxPingTimeOut: 1s
-	// database.maxQueryTimeOut: 10s
-	// database.connMaxLifetime: 0
-	// database.maxIdleConns: 5
-	// database.maxOpenConns: 20
-	v.SetDefault("database.kind", "postgresql")
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.sslMode", "disable")
-	v.SetDefault("Database.maxPingTimeOut", "1s")
-	v.SetDefault("Database.maxQueryTimeOut", "10s")
-	v.SetDefault("Database.connMaxLifetime", 0)
-	v.SetDefault("Database.maxIdleConns", 5)
-	v.SetDefault("Database.maxIdleConns", 20)
-	// ***** RabbitMQ *****
-	// consumer.workers: 10
-	// consumer.kind: rabbitmq
-	// consumer.port: 5672
-	// consumer.requestedHeartbeat: 25
-	// consumer.queue.autoACK: false
-	v.SetDefault("consumer.workers", 10)
-	v.SetDefault("consumer.kind", "rabbitmq")
-	v.SetDefault("consumer.port", 5672)
-	v.SetDefault("consumer.requestedHeartbeat", "10s")
-	v.SetDefault("consumer.queue.exclusive", false)
-	v.SetDefault("consumer.queue.autoACK", false)
 
 	// Read config file
 	v.SetConfigType("yaml")
@@ -210,100 +171,56 @@ func main() {
 	appCtx, cancel := context.WithCancel(appCtx)
 	mtrs = metrics.New(&conf)
 
-	// Create abstraction layers (Using interfaces)
-	var db storage.Store
-	var qc consumer.Consumer
-
-	var err error // Necessary to handle errors inside switch/case
 	// Select the storage
-	switch conf.Database.Kind {
-	case "memory":
-		db, err = memory.New(&storage.Config{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using  memory database")
-	case "postgresql":
-		db, err = pgsql.New(&storage.Config{
-			Address:  conf.Database.Address,
-			Port:     conf.Database.Port,
-			Username: conf.Database.Username,
-			Password: conf.Database.Password,
-			Database: conf.Database.Database,
-			SSLMode:  conf.Database.SSLMode,
+	log.Info("Using postgresql database")
+	db, err := pgsql.New(&storage.Config{
+		Address:  conf.Database.Address,
+		Port:     conf.Database.Port,
+		Username: conf.Database.Username,
+		Password: conf.Database.Password,
+		Database: conf.Database.Database,
+		SSLMode:  conf.Database.SSLMode,
 
-			MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
-			MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
-			ConnMaxLifetime: conf.Database.ConnMaxLifetime,
-			MaxIdleConns:    conf.Database.MaxIdleConns,
-			MaxOpenConns:    conf.Database.MaxOpenConns,
-		}, mtrs)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using postgresql database")
-	default:
-		log.Panic("Inside configuration file database.kind must be [postgresql|memory]")
+		MaxPingTimeOut:  conf.Database.MaxPingTimeOut,
+		MaxQueryTimeOut: conf.Database.MaxQueryTimeOut,
+		ConnMaxLifetime: conf.Database.ConnMaxLifetime,
+		MaxIdleConns:    conf.Database.MaxIdleConns,
+		MaxOpenConns:    conf.Database.MaxOpenConns,
+	}, mtrs)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Select the consumer
-	switch conf.Consumer.Kind {
-	case "kafka":
-		qc, err = kafka.New(&consumer.Config{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using kafka consumer")
-	case "rabbitmq":
-		qc, err = rmq.New(&consumer.Config{
-			Name:               conf.Application.Name,
-			Address:            conf.Consumer.Address,
-			Port:               conf.Consumer.Port,
-			RequestedHeartbeat: conf.Consumer.RequestedHeartbeat,
-			Username:           conf.Consumer.Username,
-			Password:           conf.Consumer.Password,
-			VirtualHost:        conf.Consumer.VirtualHost,
-			Queue: struct {
-				Name          string
-				RoutingKey    string
-				Durable       bool
-				AutoDelete    bool
-				Exclusive     bool
-				AutoACK       bool
-				PrefetchCount int
-				PrefetchSize  int
-				Args          map[string]interface{}
-			}{
-				conf.Consumer.Queue.Name,
-				conf.Consumer.Queue.RoutingKey,
-				conf.Consumer.Queue.Durable,
-				conf.Consumer.Queue.AutoDelete,
-				conf.Consumer.Queue.Exclusive,
-				conf.Consumer.Queue.AutoACK,
-				conf.Consumer.Queue.PrefetchCount,
-				conf.Consumer.Queue.PrefetchSize,
-				conf.Consumer.Queue.Args,
-			},
-			Exchange: struct {
-				Name       string
-				Kind       string
-				Durable    bool
-				AutoDelete bool
-				Args       map[string]interface{}
-			}{
-				conf.Consumer.Exchange.Name,
-				conf.Consumer.Exchange.Kind,
-				conf.Consumer.Exchange.Durable,
-				conf.Consumer.Exchange.AutoDelete,
-				conf.Consumer.Exchange.Args,
-			},
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Info("Using rabbitmq consumer")
-	default:
-		log.Fatal("Inside configuration file consumer.kind must be [rabbitmq|kafka]")
+	log.Info("Using rabbitmq consumer")
+	qc, err := rmq.New(&consumer.Config{
+		Name:               conf.Application.Name,
+		Address:            conf.Consumer.Address,
+		Port:               conf.Consumer.Port,
+		RequestedHeartbeat: conf.Consumer.RequestedHeartbeat,
+		Username:           conf.Consumer.Username,
+		Password:           conf.Consumer.Password,
+		VirtualHost:        conf.Consumer.VirtualHost,
+		Queue: consumer.Queue{
+			Name:          conf.Consumer.Queue.Name,
+			RoutingKey:    conf.Consumer.Queue.RoutingKey,
+			Durable:       conf.Consumer.Queue.Durable,
+			AutoDelete:    conf.Consumer.Queue.AutoDelete,
+			Exclusive:     conf.Consumer.Queue.Exclusive,
+			AutoACK:       conf.Consumer.Queue.AutoACK,
+			PrefetchCount: conf.Consumer.Queue.PrefetchCount,
+			PrefetchSize:  conf.Consumer.Queue.PrefetchSize,
+			Args:          conf.Consumer.Queue.Args,
+		},
+		Exchange: consumer.Exchange{
+			Name:       conf.Consumer.Exchange.Name,
+			Kind:       conf.Consumer.Exchange.Kind,
+			Durable:    conf.Consumer.Exchange.Durable,
+			AutoDelete: conf.Consumer.Exchange.AutoDelete,
+			Args:       conf.Consumer.Exchange.Args,
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
@@ -326,8 +243,8 @@ func main() {
 		}).Fatal("Error connecting to queue server")
 	}
 
-	// storer to called it every time we need to store a consumer.Message into the database
-	strer := storer.New(appCtx, db, mtrs)
+	// repository to called it every time we need to store a consumer.Message into the database
+	msgsRepo := repository.NewMessageRepository(appCtx, db, mtrs)
 
 	// Logic of channels for consumer and for storage
 	// it is a go pipeline model https://blog.golang.org/pipelines
@@ -341,7 +258,7 @@ func main() {
 	sliceChanMessages := make([]<-chan consumer.Messages, conf.Dispatcher.ConsumerConcurrency)
 
 	// Slice of workers
-	sliceChanStorageWorkers := make([]<-chan storer.Results, conf.Dispatcher.StorageWorkers)
+	sliceChanStorageWorkers := make([]<-chan repository.Results, conf.Dispatcher.StorageWorkers)
 
 	// Start Consumers
 	log.WithFields(log.Fields{"concurrency": conf.Dispatcher.ConsumerConcurrency}).Infof("Starting consumers")
@@ -359,10 +276,10 @@ func main() {
 	for i := 0; i < conf.Dispatcher.StorageWorkers; i++ {
 		// ids for storage workers
 		id := fmt.Sprintf("%s-%s-storage-worker-%d", appHost, conf.Application.Name, i)
-		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, strer)
+		sliceChanStorageWorkers[i] = messageProcessor(appCtx, id, chanMessages, msgsRepo)
 	}
 
-	// Merge all channels from workers in only one channel of type <-chan storer.Results
+	// Merge all channels from workers in only one channel of type <-chan repository.Results
 	chanResults := mergeResultsChans(appCtx, sliceChanStorageWorkers...)
 
 	// Listen result in different routine
@@ -387,9 +304,9 @@ func main() {
 	// metrics handler
 	mux.Handle(conf.Application.MetricsPath, mtrs.GetHandler())
 	// Home handler
-	mux.HandleFunc("/", HomePage)
+	mux.HandleFunc("/", HomePageHandler)
 	// health check handler
-	mux.HandleFunc(conf.Application.HealthPath, HealthCheck)
+	mux.HandleFunc(conf.Application.HealthPath, HealthCheckHandler)
 
 	// Profilling endpoints whe -profile or --profile
 	if conf.Server.Profile {
@@ -478,7 +395,8 @@ func ListenOSSignals(osSignal *chan bool) {
 
 // This function consume messages from queue system and return the messages as a channel of them
 func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-chan consumer.Messages {
-	out := make(chan consumer.Messages)
+	// TODO: define the buffer size
+	out := make(chan consumer.Messages, 10)
 	go func() {
 		defer close(out)
 
@@ -494,27 +412,26 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 		}
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
-		for m := range msgs {
+	loop:
+		for {
 			select {
 
-			case out <- m: // put messages consumed into the out chan
+			case msg, ok := <-msgs: // put messages consumed into the out chan
+				if !ok {
+					log.Warn("messageConsumer: Channel closed")
+					break loop
+				}
+
 				mtrs.ConsumerMessages.With(prometheus.Labels{"name": id}).Inc()
+				out <- msg
 
 			case <-ctx.Done(): // When main routine cancel
 
 				log.WithFields(log.Fields{"consumer": id}).Warnf("Stoping consumer")
 				mtrs.ConsumerRunning.With(prometheus.Labels{"name": id}).Dec()
+				qc.Close() // TODO: Close the consumer connection not the mq connection
 
-				// closes the consumer queue and connection
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					qc.Close() // TODO: Close the consumer connection not the mq connection
-					wg.Done()
-				}()
-				wg.Wait()
-
-				return // go out of the for loop
+				break loop // go out of the for loop
 			}
 		}
 	}()
@@ -523,8 +440,9 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 }
 
 // This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st storer.Storer) <-chan storer.Results {
-	out := make(chan storer.Results)
+func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st *repository.MessageRepository) <-chan repository.Results {
+	// TODO: define the buffer size
+	out := make(chan repository.Results, 10)
 	go func() {
 		defer close(out)
 
@@ -534,10 +452,16 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 		mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Inc()
 
 		// loop to dispatch the messages read to the channel consummed from storage workers
+	loop:
 		for {
 			select {
 
-			case m := <-chanMsgs:
+			case m, ok := <-chanMsgs:
+				if !ok {
+					log.Warn("messageProcessor: Channel closed")
+					break loop
+				}
+
 				startTime := time.Now()
 
 				r := st.Store(m) // proccess and storage message into db
@@ -555,7 +479,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 				log.WithFields(log.Fields{"worker": id}).Warnf("Stoping storage worker")
 				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
-				return // go out of the for loop
+				break loop // go out of the for loop
 
 			}
 		}
@@ -568,7 +492,9 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 // bassically convert (...<-chan consumer.Messages) --> (<-chan consumer.Messages)
 func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Messages) <-chan consumer.Messages {
 	var wg sync.WaitGroup
-	out := make(chan consumer.Messages)
+
+	// TODO: define the buffer size
+	out := make(chan consumer.Messages, 10)
 
 	// internal function to merge channels in only one
 	multiplex := func(channel <-chan consumer.Messages) {
@@ -599,12 +525,14 @@ func mergeMessagesChans(ctx context.Context, channels ...<-chan consumer.Message
 
 // mergeResultsChan merge all the channels of storer.Results in only one
 // bassically convert (...<-chan storer.Results) --> (<-chan storer.Results)
-func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <-chan storer.Results {
+func mergeResultsChans(ctx context.Context, channels ...<-chan repository.Results) <-chan repository.Results {
 	var wg sync.WaitGroup
-	out := make(chan storer.Results)
+
+	// TODO: define the buffer size
+	out := make(chan repository.Results, 10)
 
 	// internal function to merge channels in only one
-	multiplex := func(channel <-chan storer.Results) {
+	multiplex := func(channel <-chan repository.Results) {
 		defer wg.Done()
 		for ch := range channel {
 			select {
@@ -631,7 +559,7 @@ func mergeResultsChans(ctx context.Context, channels ...<-chan storer.Results) <
 }
 
 // HomePage render the home page website
-func HomePage(w http.ResponseWriter, r *http.Request) {
+func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	indexHTMLTmpl := `
 <html>
 <head>
@@ -692,6 +620,6 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 
 // HealthCheck render the health check endpoint for the whole application
 // TODO: Implement the health check, when database fail or consumer fail
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 }

@@ -19,24 +19,28 @@ type Config struct {
 	Username           string
 	Password           string
 	VirtualHost        string
-	Queue              struct {
-		Name          string
-		RoutingKey    string
-		Durable       bool
-		AutoDelete    bool
-		Exclusive     bool
-		AutoACK       bool
-		PrefetchCount int
-		PrefetchSize  int
-		Args          map[string]interface{}
-	}
-	Exchange struct {
-		Name       string
-		Kind       string
-		Durable    bool
-		AutoDelete bool
-		Args       map[string]interface{}
-	}
+	Queue              Queue
+	Exchange           Exchange
+}
+
+type Queue struct {
+	Name          string
+	RoutingKey    string
+	Durable       bool
+	AutoDelete    bool
+	Exclusive     bool
+	AutoACK       bool
+	PrefetchCount int
+	PrefetchSize  int
+	Args          map[string]interface{}
+}
+
+type Exchange struct {
+	Name       string
+	Kind       string
+	Durable    bool
+	AutoDelete bool
+	Args       map[string]interface{}
 }
 
 // GetURI return the consumer URI
