@@ -153,7 +153,6 @@ func main() {
 	// database.connMaxLifetime: 0
 	// database.maxIdleConns: 5
 	// database.maxOpenConns: 20
-	v.SetDefault("database.kind", "postgresql")
 	v.SetDefault("database.port", 5432)
 	v.SetDefault("database.sslMode", "disable")
 	v.SetDefault("Database.maxPingTimeOut", "1s")
@@ -168,7 +167,6 @@ func main() {
 	// consumer.requestedHeartbeat: 25
 	// consumer.queue.autoACK: false
 	v.SetDefault("consumer.workers", 10)
-	v.SetDefault("consumer.kind", "rabbitmq")
 	v.SetDefault("consumer.port", 5672)
 	v.SetDefault("consumer.requestedHeartbeat", "10s")
 	v.SetDefault("consumer.queue.exclusive", false)
@@ -237,39 +235,23 @@ func main() {
 		Username:           conf.Consumer.Username,
 		Password:           conf.Consumer.Password,
 		VirtualHost:        conf.Consumer.VirtualHost,
-		Queue: struct {
-			Name          string
-			RoutingKey    string
-			Durable       bool
-			AutoDelete    bool
-			Exclusive     bool
-			AutoACK       bool
-			PrefetchCount int
-			PrefetchSize  int
-			Args          map[string]interface{}
-		}{
-			conf.Consumer.Queue.Name,
-			conf.Consumer.Queue.RoutingKey,
-			conf.Consumer.Queue.Durable,
-			conf.Consumer.Queue.AutoDelete,
-			conf.Consumer.Queue.Exclusive,
-			conf.Consumer.Queue.AutoACK,
-			conf.Consumer.Queue.PrefetchCount,
-			conf.Consumer.Queue.PrefetchSize,
-			conf.Consumer.Queue.Args,
+		Queue: consumer.Queue{
+			Name:          conf.Consumer.Queue.Name,
+			RoutingKey:    conf.Consumer.Queue.RoutingKey,
+			Durable:       conf.Consumer.Queue.Durable,
+			AutoDelete:    conf.Consumer.Queue.AutoDelete,
+			Exclusive:     conf.Consumer.Queue.Exclusive,
+			AutoACK:       conf.Consumer.Queue.AutoACK,
+			PrefetchCount: conf.Consumer.Queue.PrefetchCount,
+			PrefetchSize:  conf.Consumer.Queue.PrefetchSize,
+			Args:          conf.Consumer.Queue.Args,
 		},
-		Exchange: struct {
-			Name       string
-			Kind       string
-			Durable    bool
-			AutoDelete bool
-			Args       map[string]interface{}
-		}{
-			conf.Consumer.Exchange.Name,
-			conf.Consumer.Exchange.Kind,
-			conf.Consumer.Exchange.Durable,
-			conf.Consumer.Exchange.AutoDelete,
-			conf.Consumer.Exchange.Args,
+		Exchange: consumer.Exchange{
+			Name:       conf.Consumer.Exchange.Name,
+			Kind:       conf.Consumer.Exchange.Kind,
+			Durable:    conf.Consumer.Exchange.Durable,
+			AutoDelete: conf.Consumer.Exchange.AutoDelete,
+			Args:       conf.Consumer.Exchange.Args,
 		},
 	})
 	if err != nil {
