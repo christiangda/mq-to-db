@@ -53,7 +53,7 @@ jobs:
 
       - name: Git Current Tag Version
         run: |
-          echo ${{ env.GITHUB_REF }} | cut -d / -f 3
+          echo GIT_VERSION=${{ github.ref_name }}
 
       - name: Git Version
         run: |
@@ -72,7 +72,7 @@ jobs:
           git config --get user.name | tr -d '\040\011\012\015\n'
 
       - name: Build Distribution Cross-Platform
-        run: make build-dist
+        run: GIT_VERSION=${{ github.ref_name }} make build-dist
 
       - name: List Workspace Files
         run: tree .
@@ -96,10 +96,6 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - name: Set id for github tag version
-        id: get_tag
-        run: echo ::set-output name=name::$(echo $GITHUB_REF | cut -d / -f 3)
-
       - name: Docker Version
         run: docker version
 
@@ -120,7 +116,7 @@ jobs:
         run: tree .
 
       - name: Build Docker Images for docker hub
-        run: make container-build CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
+        run: make container-build CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ github.ref_name }}
 
       - name: Show Local Docker Images
         run: docker images
@@ -129,13 +125,13 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
 
       - name: Publish Images in Docker Hub
-        run: make container-publish-docker CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
+        run: make container-publish-docker CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ github.ref_name }}
 
       # - name: Logging in GitHub Packages
       #   run: echo ${{ secrets.GH_TOKEN }} | docker login docker.pkg.github.com -u ${{ secrets.GH_USER }} --password-stdin
 
       # - name: Publish Images in GitHub Packages
-      #   run: make container-publish-github CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ steps.get_tag.outputs.name }}
+      #   run: make container-publish-github CONTAINER_REPO=${{ env.DOCKER_HUB_REPO }} CONTAINER_ARCH=${{ env.DOCKER_BUILD_ARCHS }} GIT_VERSION=${{ github.ref_name }}
 
   create_github_release:
     name: Create Github Release
@@ -145,22 +141,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set id for github tag version
-        id: get_tag
-        run: echo ::set-output name=name::$(echo $GITHUB_REF | cut -d / -f 3)
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: ./dist/
+
+      - name: Show workspace files
+        run: tree .
 
       - name: Create Release
         id: create_github_release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: ${{ steps.get_tag.outputs.name }}
-          name: Release ${{ steps.get_tag.outputs.name }}
-          body: |
-            See the file: CHANGELOG.md
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          # body: |
+          #   See the file: CHANGELOG.md
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: |
-            LICENSE
-            dist/*
+
+      - name: Upload Release Assets
+        id: upload-release-assets
+        uses: dwenegar/upload-release-assets@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ steps.create_github_release.outputs.id }}
+          assets_path: dist/assets
