@@ -5,19 +5,25 @@ import (
 	"runtime"
 )
 
-// Populated at build-time.
-// go build \
-// -ldflags "-X github.com/mq-to-db/internal/verion.Version=$(git rev-parse --abbrev-ref HEAD) \
-//           -X github.com/mq-to-db/internal/verion.Revision=$(git rev-parse --short HEAD) \
-//           -X github.com/mq-to-db/internal/verion.Branch=$(git rev-parse --abbrev-ref HEAD) \
-//           -X github.com/mq-to-db/internal/verion.BuildUser=$(git config --get user.name) \
-//           -X github.com/mq-to-db/internal/verion.BuildDate=$(date +'%Y-%m-%dT%H:%M:%S')"
+const unknown string = "unknown"
+
 var (
-	Version   string
-	Revision  string
-	Branch    string
+	// Version is the version as string.
+	Version string
+
+	// Revision is the revision as string.
+	Revision string
+
+	// Branch is the branch of the git repository as string.
+	Branch string
+
+	// BuildUser is the user who build the binary.
 	BuildUser string
+
+	// BuildDate is the date of the build as string.
 	BuildDate string
+
+	// GoVersion is the version of the go compiler as string.
 	GoVersion = runtime.Version()
 )
 
@@ -39,7 +45,7 @@ func GetVersionInfo() string {
 		Revision = "0"
 	}
 	if Branch == "" {
-		Branch = "unknown"
+		Branch = unknown
 	}
 
 	return fmt.Sprintf("(version=%s, revision=%s, branch=%s)",
@@ -58,13 +64,13 @@ func GetVersionInfoExtended() string {
 		Revision = "0"
 	}
 	if Branch == "" {
-		Branch = "unknown"
+		Branch = unknown
 	}
 	if BuildUser == "" {
-		BuildUser = "unknown"
+		BuildUser = unknown
 	}
 	if BuildDate == "" {
-		BuildDate = "unknown"
+		BuildDate = unknown
 	}
 
 	return fmt.Sprintf("(version=%s, revision=%s, branch=%s, go=%s, user=%s, date=%s)",

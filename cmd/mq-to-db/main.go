@@ -47,7 +47,7 @@ var (
 	mtrs    *metrics.Metrics
 )
 
-func init() { // package initializer
+func init() {
 	appHost, _ = os.Hostname()
 
 	conf = config.New()
@@ -68,7 +68,7 @@ func init() { // package initializer
 	conf.Application.BuildInfo = version.GetVersionInfoExtended()
 
 	// Server conf flags
-	flag.StringVar(&conf.Server.Address, "server.address", "", "Server address, empty means all address") // empty means all the address
+	flag.StringVar(&conf.Server.Address, "server.address", "", "Server address, empty means all address")
 	flag.IntVar(&conf.Server.Port, "server.port", 8080, "Server port")
 	flag.DurationVar(&conf.Server.ReadTimeout, "server.readTimeout", 2*time.Second, "Server ReadTimeout")
 	flag.DurationVar(&conf.Server.WriteTimeout, "server.writeTimeout", 5*time.Second, "Server WriteTimeout")
@@ -223,7 +223,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Try to connects to Storage first, and if everithing is ready, then go for Consumer
+	// Try to connects to Storage first, and if everything is ready, then go for Consumer
 	log.Infof("Connecting to database")
 	if err := db.Connect(appCtx); err != nil {
 		log.WithFields(log.Fields{
@@ -328,7 +328,7 @@ func main() {
 		WriteTimeout:      conf.Server.WriteTimeout,
 		IdleTimeout:       conf.Server.IdleTimeout,
 		ReadHeaderTimeout: conf.Server.ReadHeaderTimeout,
-		Addr:              conf.Server.Address + ":" + strconv.Itoa(int(conf.Server.Port)),
+		Addr:              conf.Server.Address + ":" + strconv.Itoa(conf.Server.Port),
 		Handler:           mux,
 	}
 	httpServer.SetKeepAlivesEnabled(conf.Server.KeepAlivesEnabled)
@@ -415,7 +415,6 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 	loop:
 		for {
 			select {
-
 			case msg, ok := <-msgs: // put messages consumed into the out chan
 				if !ok {
 					log.Warn("messageConsumer: Channel closed")
@@ -440,7 +439,12 @@ func messageConsumer(ctx context.Context, id string, qc consumer.Consumer) <-cha
 }
 
 // This function consume messages from queue system and return the messages as a channel of them
-func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.Messages, st *repository.MessageRepository) <-chan repository.Results {
+func messageProcessor(
+	ctx context.Context,
+	id string,
+	chanMsgs <-chan consumer.Messages,
+	st *repository.MessageRepository,
+) <-chan repository.Results {
 	// TODO: define the buffer size
 	out := make(chan repository.Results, 10)
 	go func() {
@@ -455,7 +459,6 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 	loop:
 		for {
 			select {
-
 			case m, ok := <-chanMsgs:
 				if !ok {
 					log.Warn("messageProcessor: Channel closed")
@@ -464,7 +467,7 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 
 				startTime := time.Now()
 
-				r := st.Store(m) // proccess and storage message into db
+				r := st.Store(m) // process and storage message into db
 				r.By = id        // fill who execute it
 				out <- r
 
@@ -480,7 +483,6 @@ func messageProcessor(ctx context.Context, id string, chanMsgs <-chan consumer.M
 				mtrs.StorageWorkerRunning.With(prometheus.Labels{"name": id}).Dec()
 
 				break loop // go out of the for loop
-
 			}
 		}
 	}()
@@ -585,8 +587,11 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 		<li><a href="{{.ProfileLink}}">{{.ProfileLink}}</a></li>
 	</ul>
 
-
-	<h3><a href="https://prometheus.io/">If you want to know more about Metrics and Exporters go to https://prometheus.io</a></h3>
+	<h3>
+        <a href="https://prometheus.io/">
+            If you want to know more about Metrics and Exporters go to https://prometheus.io
+        </a>
+    </h3>
 </body>
 </html>
 `
