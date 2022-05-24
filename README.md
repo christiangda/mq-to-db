@@ -6,6 +6,7 @@
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/christiangda/mq-to-db?label=github%20release&style=plastic)
 ![Docker Pulls](https://img.shields.io/docker/pulls/christiangda/mq-to-db?label=docker%20hub%20pulls&style=plastic)
 ![Docker Image Version (latest semver)](https://img.shields.io/docker/v/christiangda/mq-to-db?label=docker%20hub%20tag&style=plastic)
+[![CodeQL Analysis](https://github.com/christiangda/mq-to-db/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/christiangda/mq-to-db/actions/workflows/codeql-analysis.yml)
 
 This is a [Golang (go)](https://golang.org/) program to read [a specific JSON Payload message](docs/messages.md) from a Message Queue System and Store into Database using concurrency
 
