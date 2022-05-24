@@ -7,7 +7,8 @@ on:
 
   pull_request:
     branches:
-      - master, develop
+      - master
+      - develop
 
   workflow_dispatch:
 
