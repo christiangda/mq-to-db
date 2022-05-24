@@ -64,12 +64,10 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 
 	sqlm, err := messages.NewSQL(msg.Payload) // serialize message payload as SQL message type
 	if err != nil {
-
 		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
 		mr.mtrs.RepositorySQLMessagesErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
-
 			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
@@ -90,12 +88,10 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 
 	result, err := mr.sql.ExecContext(mr.ctx, sqlm.Content.Sentence)
 	if err != nil {
-
 		mr.mtrs.RepositoryMessagesErrorsTotal.Inc()
 		mr.mtrs.RepositorySQLMessagesToDBErrorsTotal.Inc()
 
 		if err = msg.Reject(false); err != nil {
-
 			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
@@ -116,7 +112,6 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 	rows, err := result.RowsAffected()
 	if err != nil {
 		if err = msg.Reject(false); err != nil {
-
 			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
@@ -135,7 +130,6 @@ func (mr *MessageRepository) Store(msg consumer.Messages) Results {
 
 	if err := msg.Ack(); err != nil {
 		if err = msg.Reject(false); err != nil {
-
 			mr.mtrs.RepositoryMessagesRejectedTotal.Inc()
 
 			return Results{
