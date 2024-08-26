@@ -25,14 +25,14 @@ This is a close image of how it works:
 
 ## Characteristics
 
-* The number of queue consumers could be different from the numbers of storage workers, see [config-sample.yaml](https://github.com/christiangda/mq-to-db/blob/master/config-sample.yaml)
+* The number of queue consumers could be different from the numbers of storage workers, see [config-sample.yaml](https://github.com/christiangda/mq-to-db/blob/main/config-sample.yaml)
 * The process (job) of consuming one message from the queue and store into the database is synchronous because every message needs to be acknowledged (confirmed as stored).
 * [Golang](https://golang.org/pkg/net/http/pprof/) `pprof` enabled via `--profile` command line when starting the service
 * Prometheus metrics for consumers, storage workers, go statistics, and database
 * [Grafana](https://grafana.com/) dashboard for [Prometheus.io](https://prometheus.io/) metrics
 * [Dockerfile](Dockerfile) multi-stage build
 * Makefile to facilitate the project builds
-* [docker-compose file](https://github.com/christiangda/mq-to-db/blob/master/docker-compose.yaml) and [configuration](https://github.com/christiangda/mq-to-db/tree/master/docker-compose) to testing all elements
+* [docker-compose file](https://github.com/christiangda/mq-to-db/blob/main/docker-compose.yaml) and [configuration](https://github.com/christiangda/mq-to-db/tree/main/docker-compose) to testing all elements
 * docker images at [docker-hub](https://hub.docker.com/repository/docker/christiangda/mq-to-db) and [Github Packages](https://github.com/christiangda/mq-to-db/packages)
 * [CI/CD Github Action pipeline](https://github.com/christiangda/mq-to-db/actions) workflow
 
